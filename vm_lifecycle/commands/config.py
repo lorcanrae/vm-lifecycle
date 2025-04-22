@@ -6,6 +6,9 @@ from vm_lifecycle.utils import (
     get_root_dir,
     write_tfvars_from_config,
     load_config,
+    is_valid_instance_name,
+    is_valid_project_id,
+    prompt_validation,
 )
 import shutil
 import os
@@ -28,13 +31,18 @@ def init_config():
     """Prompt the user for config values and write to config.yaml"""
     click.echo("🔧 Initializing Terraform CLI config")
 
-    # TODO: make machine_type a list of common machine types
-    # TODO: add character validation to instance_name
-    # TODO: add character validation to project_id
     config = {
-        "project_id": click.prompt("GCP project ID", type=str),
+        "project_id": prompt_validation(
+            "GCP Project ID",
+            is_valid_project_id,
+            "Project ID must be 6-30 lowercase letters, digits or hyphens, starting with a character and not ending with a hyphen.",
+        ),
         "zone": click.prompt("GCP zone", type=str, default="europe-west1-b"),
-        "instance_name": click.prompt("VM instance name", type=str),
+        "instance_name": prompt_validation(
+            "VM instance name",
+            is_valid_instance_name,
+            "Instance name must be 1-63 characters, lowercase letters, digits or hyphens, start with a letter, and not end with a hyphen.",
+        ),
         "instance_user": click.prompt(
             "Instance User. Recommend current local user ",
             type=str,
@@ -53,16 +61,16 @@ def init_config():
 
     click.echo(f"✅ Configuration written to {DEFAULT_CONFIG_PATH}\n")
 
-    click.echo("📦 Creating `terraform.tfvars` for all workspaces")
+    click.echo("📦 Creating 'terraform.tfvars' for all workspaces")
     for workspace in ["vm-create", "vm-archive", "vm-restore"]:
         write_tfvars_from_config(config, workspace)
-    click.echo("✅ `terraform.tfvars` created in all workspaces\n")
+    click.echo("✅ 'terraform.tfvars' created in all workspaces\n")
 
 
 @init.command(name="tf")
 def init_tf():
     """Initialise Terraform workspace"""
-    click.echo("Checking if `terraform` is on PATH")
+    click.echo("Checking if 'terraform' is on PATH")
     terraform_path = shutil.which("terraform")
     if terraform_path:
         print(f"✅ Terraform is on PATH: {terraform_path}")

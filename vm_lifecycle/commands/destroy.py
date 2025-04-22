@@ -21,7 +21,7 @@ def destroy_all(dry_run, log_file):
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     log_file = log_file or f"destroy-{timestamp}.log"
 
-    click.echo(f"⚠️ Running `terraform {mode}` in all workspaces...")
+    click.echo(f"⚠️ Running 'terraform {mode}' in all workspaces...")
 
     if not dry_run and not click.confirm(
         "Are you sure you want to destroy all resources?", default=False
