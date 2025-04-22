@@ -2,6 +2,7 @@ from pathlib import Path
 import yaml
 import click
 import re
+import subprocess
 
 DEFAULT_CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
 
@@ -98,7 +99,7 @@ def is_valid_project_id(pid: str) -> bool:
 
 
 def is_valid_instance_name(name: str) -> bool:
-    return re.match(r"^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$")
+    return re.match(r"^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$", name) is not None
 
 
 def prompt_validation(prompt_text, validator_fn, error_msg):
@@ -128,6 +129,30 @@ def pre_run_checks(workspace: str) -> bool:
             )
             return False
     return True
+
+
+######## Connecting
+
+
+def describe_vm(zone: str, project: str) -> str:
+    """Get the description of the VM"""
+    response = str(
+        subprocess.check_output(
+            [
+                "gcloud",
+                "compute",
+                "instances",
+                "describe",
+                f"--zone={zone}",
+                "--project={project}",
+            ]
+        )
+    )
+    return response
+
+
+def check_running(status) -> bool:
+    return "RUNNING" in status
 
 
 ######## Misc
