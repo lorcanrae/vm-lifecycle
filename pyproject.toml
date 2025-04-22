@@ -14,7 +14,7 @@ pyyaml = "^6.0.2"
 pytest = "^8.3.5"
 
 [tool.poetry.scripts]
-vmlc = 'vmlc.main:cli'
+vmlc = 'vm_lifecycle.main:cli'
 
 [build-system]
 requires = ["poetry-core"]

@@ -1,6 +1,6 @@
 import subprocess
 import click
-from vmlc.utils import get_root_dir, pre_run_checks
+from vm_lifecycle.utils import get_root_dir, pre_run_checks
 
 
 @click.command(name="create")

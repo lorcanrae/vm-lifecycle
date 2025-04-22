@@ -16,7 +16,7 @@ apply:
 	cd $(dir) && $(TF) init && $(TF) apply -auto-approve -var-file=terraform.tfvars
 
 destroy:
-	cd $(dir) && $(TF) init && $(TF) destroy -var-file=terraform.tfvars
+	cd $(dir) && $(TF) init && $(TF) destroy -auto-approve -var-file=terraform.tfvars
 
 plan:
 	cd $(dir) && $(TF) init && $(TF) plan -var-file=terraform.tfvars

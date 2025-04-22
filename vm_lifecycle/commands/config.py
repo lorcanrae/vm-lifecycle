@@ -2,7 +2,7 @@ from pathlib import Path
 import subprocess
 import yaml
 import click
-from vmlc.utils import (
+from vm_lifecycle.utils import (
     get_root_dir,
     write_tfvars_from_config,
     load_config,
@@ -33,10 +33,10 @@ def init_config():
     # TODO: add character validation to project_id
     config = {
         "project_id": click.prompt("GCP project ID", type=str),
-        "zone": click.prompt("GCP zone", type=str, default="europe-central1-a"),
+        "zone": click.prompt("GCP zone", type=str, default="europe-west1-b"),
         "instance_name": click.prompt("VM instance name", type=str),
         "instance_user": click.prompt(
-            "Instance User. Recommend to use current local user: ",
+            "Instance User. Recommend current local user ",
             type=str,
             default=os.environ.get("USER"),
         ),
@@ -82,6 +82,20 @@ def create_tfvars_from_config():
     config = load_config(DEFAULT_CONFIG_PATH)
     for workspace in ["vm-create", "vm-archive", "vm-restore"]:
         write_tfvars_from_config(config=config, workspace=workspace)
+
+
+@init.command(name="show")
+def show_config():
+    # Make sure config exists
+    config = load_config(DEFAULT_CONFIG_PATH)
+
+    for key, val in config.items():
+        click.echo(f"{key}: {val}")
+
+
+@init.command(name="clear-state")
+def clear_tf_state():
+    pass
 
 
 if __name__ == "__main__":
