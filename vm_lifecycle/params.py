@@ -21,8 +21,3 @@ GCP_MACHINE_TYPES = [
     "n2-standard-2",
     "n2-standard-4",
 ]
-
-
-# if __name__ == "__main__":
-#     print(ROOT_DIR)
-#     print(DEFAULT_CONFIG_PATH)
