@@ -1,20 +1,32 @@
 import subprocess
 import click
-from vm_lifecycle.utils import get_root_dir, pre_run_checks
+from vm_lifecycle.utils import (
+    pre_run_checks,
+    remove_tfstate_files,
+    describe_vm_status_code,
+    load_config,
+)
+from vm_lifecycle.params import ROOT_DIR, DEFAULT_CONFIG_PATH
 
 
 @click.command(name="archive")
 def archive_vm():
     """Turn of an existing VM, create an image from it, and delete the instance"""
-    pre_run_checks(workspace="vm-archive")
+    checks = pre_run_checks(workspace="vm-archive")
+    config = load_config(DEFAULT_CONFIG_PATH)
+    status = describe_vm_status_code(
+        config["zone"], config["project_id"], config["instance_name"]
+    )
+    if "ERROR" in status.stderr:
+        click.echo(f"No VM named: [{config['instance_name']}] to archive. Aborting.")
+        return
+
+    remove_tfstate_files(ROOT_DIR / "infra/vm-archive", echo=False)
+    if not checks:
+        return
     click.echo("Archiving VM...")
-    root = get_root_dir(__file__)
     subprocess.run(
         ["make", "apply", "workspace=vm-archive"],
         check=True,
-        cwd=root,
+        cwd=ROOT_DIR,
     )
-
-
-if __name__ == "__main__":
-    print(get_root_dir(__file__))
