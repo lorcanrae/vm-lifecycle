@@ -21,13 +21,4 @@ resource "google_compute_instance" "vm_from_image" {
       network_tier = "STANDARD"
     }
   }
-
-}
-
-resource "null_resource" "delete_old_images" {
-  depends_on = [google_compute_instance.vm_from_image]
-
-  provisioner "local-exec" {
-    command = "${path.module}/scripts/delete_old_images.sh ${var.image_base_name}"
-  }
 }
