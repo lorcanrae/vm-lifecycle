@@ -3,8 +3,8 @@ import yaml
 import click
 import re
 import subprocess
+from vm_lifecycle.params import DEFAULT_CONFIG_PATH
 
-DEFAULT_CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
 
 ######## Config
 
@@ -51,7 +51,6 @@ def validate_tfvars_with_config(config: dict, workspace: str) -> bool:
     with tfvars_path.open("r") as f:
         tfvars_lines = [line.strip() for line in f.readlines()]
 
-    print(tfvars_lines)
     tfvars = {}
     for line in tfvars_lines:
         line = line.strip()
@@ -80,18 +79,6 @@ def validate_tfvars_with_config(config: dict, workspace: str) -> bool:
 
 
 ######## Input Validation
-
-GCP_MACHINE_TYPES = [
-    "e2-micro",
-    "e2-small",
-    "e2-medium",
-    "e2-standard-2",
-    "e2-standard-4",
-    "n1-standard-1",
-    "n1-standard-2",
-    "n2-standard-2",
-    "n2-standard-4",
-]
 
 
 def is_valid_project_id(pid: str) -> bool:
@@ -134,7 +121,7 @@ def pre_run_checks(workspace: str) -> bool:
 ######## Connecting
 
 
-def describe_vm(zone: str, project: str) -> str:
+def describe_vm(zone: str, project: str, instance_name: str) -> str:
     """Get the description of the VM"""
     response = str(
         subprocess.check_output(
@@ -144,9 +131,28 @@ def describe_vm(zone: str, project: str) -> str:
                 "instances",
                 "describe",
                 f"--zone={zone}",
-                "--project={project}",
+                f"--project={project}",
+                f"{instance_name}",
             ]
         )
+    )
+    return response
+
+
+def describe_vm_status_code(zone: str, project: str, instance_name: str):
+    response = subprocess.run(
+        [
+            "gcloud",
+            "compute",
+            "instances",
+            "describe",
+            f"--zone={zone}",
+            f"--project={project}",
+            f"{instance_name}",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
     )
     return response
 
@@ -155,22 +161,32 @@ def check_running(status) -> bool:
     return "RUNNING" in status
 
 
+def instance_not_found(status) -> bool:
+    return "ERROR" in status
+
+
+def create_vscode_ssh():
+    subprocess.run(["gcloud", "compute", "config-ssh"])
+
+
 ######## Misc
 
 
-def get_root_dir(file: Path):
-    return Path(file).resolve().parent.parent.parent
-
-
-def remove_tfstate_files(path: Path):
+def remove_tfstate_files(path: Path, echo=True):
     for file in ["terraform.tfstate", "terraform.tfstate.backup"]:
         f = path / file
         if f.exists():
             f.unlink()
-            click.echo(f"🗑️ Removed {f}")
+            if echo:
+                click.echo(f"🗑️ Removed {f}")
 
 
 if __name__ == "__main__":
     config = load_config(DEFAULT_CONFIG_PATH)
     print(config)
-    # validate_tfvars_with_config(config, "vm-create")
+    validate_tfvars_with_config(config, "vm-create")
+
+    response = describe_vm_status_code(
+        config["zone"], config["project_id"], config["instance_name"]
+    )
+    print(response.stdout)
