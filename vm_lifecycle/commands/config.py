@@ -1,19 +1,22 @@
-from pathlib import Path
 import subprocess
 import yaml
 import click
 from vm_lifecycle.utils import (
-    get_root_dir,
     write_tfvars_from_config,
     load_config,
     is_valid_instance_name,
     is_valid_project_id,
     prompt_validation,
+    remove_tfstate_files,
+)
+from vm_lifecycle.params import (
+    TF_WORKSPACES,
+    DEFAULT_CONFIG_PATH,
+    GCP_MACHINE_TYPES,
+    ROOT_DIR,
 )
 import shutil
 import os
-
-DEFAULT_CONFIG_PATH = Path(__file__).parent.parent.parent / "config.yaml"
 
 
 @click.group(name="init", invoke_without_command=True)
@@ -48,7 +51,11 @@ def init_config():
             type=str,
             default=os.environ.get("USER"),
         ),
-        "machine_type": click.prompt("Machine type", type=str, default="e2-standard-4"),
+        "machine_type": click.prompt(
+            "Machine type",
+            type=click.Choice(GCP_MACHINE_TYPES),
+            default="e2-standard-4",
+        ),
         "disk_size": click.prompt("Disk size", type=int, default=100),
     }
 
@@ -62,7 +69,7 @@ def init_config():
     click.echo(f"✅ Configuration written to {DEFAULT_CONFIG_PATH}\n")
 
     click.echo("📦 Creating 'terraform.tfvars' for all workspaces")
-    for workspace in ["vm-create", "vm-archive", "vm-restore"]:
+    for workspace in TF_WORKSPACES:
         write_tfvars_from_config(config, workspace)
     click.echo("✅ 'terraform.tfvars' created in all workspaces\n")
 
@@ -81,14 +88,13 @@ def init_tf():
         return False
 
     click.echo("🔧 Initializing Terraform workspaces")
-    root = get_root_dir(__file__)
-    subprocess.run(["make", "-s", "init-all"], check=True, cwd=root)
+    subprocess.run(["make", "-s", "init-all"], check=True, cwd=ROOT_DIR)
 
 
 @init.command(name="tfvars")
 def create_tfvars_from_config():
     config = load_config(DEFAULT_CONFIG_PATH)
-    for workspace in ["vm-create", "vm-archive", "vm-restore"]:
+    for workspace in TF_WORKSPACES:
         write_tfvars_from_config(config=config, workspace=workspace)
 
 
@@ -103,7 +109,8 @@ def show_config():
 
 @init.command(name="clear-state")
 def clear_tf_state():
-    pass
+    for workspace in TF_WORKSPACES:
+        remove_tfstate_files(ROOT_DIR / f"infra/{workspace}")
 
 
 if __name__ == "__main__":
