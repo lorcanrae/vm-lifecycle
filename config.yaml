@@ -1,0 +1,8 @@
+disk_size: 80
+image_base_name: my-vm-image
+instance_name: my-vm
+instance_user: lscr
+machine_type: e2-standard-4
+project_id: wagon-de
+region: europe-central1
+zone: europe-central1-a
