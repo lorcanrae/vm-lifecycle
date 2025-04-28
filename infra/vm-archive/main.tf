@@ -20,7 +20,7 @@ resource "google_compute_image" "vm_image" {
   family      = var.image_base_name
   depends_on  = [null_resource.stop_vm]
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
   }
 }
 
