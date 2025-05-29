@@ -3,9 +3,9 @@ import subprocess
 from vm_lifecycle.utils import (
     load_config,
     describe_vm,
-    check_running,
     pre_run_checks,
     create_vscode_ssh,
+    check_vm_status,
 )
 from vm_lifecycle.params import TF_WORKSPACES
 
@@ -24,23 +24,44 @@ def vscode_connect(path):
 
     # Build connection alias with gcloud
     config = load_config()
+    gcp_instance_name = (
+        f"{config['instance_name']}.{config['zone']}.{config['project_id']}"
+    )
+    status = check_vm_status(
+        describe_vm(config["zone"], config["project_id"], config["instance_name"])
+    )
+
+    if status == "ERROR":
+        print(
+            "No VM found. Run 'vmlc create' or 'vmlc restore' before trying to connect"
+        )
+        return
+    elif status == "OFF":
+        print("Turning VM on.")
+        subprocess.run(
+            [
+                "gcloud",
+                "compute",
+                "instances",
+                "start",
+                f"--zone={config['zone']}",
+                f"--project={config['project_id']}",
+                config["instance_name"],
+            ]
+        )
 
     create_vscode_ssh()
 
     # Make sure the VM is on
-    if not check_running(
-        describe_vm(config["zone"], config["project_id"], config["instance_name"])
-    ):
-        print(
-            "VM is stopped. Run 'vmlc create' or 'vmlc restore' before trying to connect"
-        )
+    if path == "/home/":
+        vscode_path = f"/home/{config['instance_user']}/code/lorcanrae"
     else:
-        vscode_path = path if path else f"/home/{config['instance_user']}/code/"
+        vscode_path = path
 
-        subprocess.run(
-            [
-                "code",
-                "--folder-uri",
-                f"vscode-remote://ssh-remote+{config['instance_name']}.{config['zone']}.{config['project_id']}{vscode_path}",
-            ]
-        )
+    subprocess.run(
+        [
+            "code",
+            "--folder-uri",
+            f"vscode-remote://ssh-remote+{gcp_instance_name}{vscode_path}",
+        ]
+    )

@@ -12,7 +12,7 @@ from vm_lifecycle.params import DEFAULT_CONFIG_PATH
 def load_config(path: Path = DEFAULT_CONFIG_PATH) -> dict:
     if not path.exists():
         click.echo(
-            f"Config file 'config.yaml' not found at: {path}. Run 'devm init config' to create config.yaml"
+            f"Config file 'config.yaml' not found at: {path}. Run 'vmlc init config' to create config.yaml"
         )
         return {}
 
@@ -112,7 +112,7 @@ def pre_run_checks(workspace: str) -> bool:
     for file in file_check:
         if workspace_dir / file not in workspace_dir.iterdir():
             click.echo(
-                f"{file} not found in {workspace}. Run 'devm init tf --{workspace}' or 'devm init tf'"
+                f"{file} not found in {workspace}. Run 'vmlc init tf --{workspace}' or 'vmlc init tf'"
             )
             return False
     return True
@@ -157,12 +157,13 @@ def describe_vm_status_code(zone: str, project: str, instance_name: str):
     return response
 
 
-def check_running(status) -> bool:
-    return "RUNNING" in status
-
-
-def instance_not_found(status) -> bool:
-    return "ERROR" in status
+def check_vm_status(status) -> bool:
+    if "RUNNING" in status:
+        return "ON"
+    elif "TERMINATED" in status:
+        return "OFF"
+    elif "ERROR" in status:
+        return "ERROR"
 
 
 def create_vscode_ssh():
