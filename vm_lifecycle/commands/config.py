@@ -1,55 +1,45 @@
-import subprocess
-import yaml
 import click
+import os
+from vm_lifecycle.config_manager import ConfigManager
 from vm_lifecycle.utils import (
-    write_tfvars_from_config,
-    load_config,
+    is_valid_profile_name,
     is_valid_instance_name,
     is_valid_project_id,
     prompt_validation,
-    remove_tfstate_files,
+    select_from_list,
 )
-from vm_lifecycle.params import (
-    TF_WORKSPACES,
-    DEFAULT_CONFIG_PATH,
-    GCP_MACHINE_TYPES,
-    ROOT_DIR,
-)
-import shutil
-import os
+
+from vm_lifecycle.params import GCP_MACHINE_TYPES
 
 
-@click.group(name="init", invoke_without_command=True)
-@click.pass_context
-def init(ctx):
-    """Initialization commands"""
-    if ctx.invoked_subcommand is None:
-        click.echo("Running default: init config and init tf")
-        ctx.invoke(init_config)
-        ctx.invoke(init_tf)
+@click.group(name="config")
+def config():
+    """GCP VM Lifecycle Config Commands"""
+    pass
 
 
-@init.command(name="config")
-def init_config():
-    """Prompt the user for config values and write to config.yaml"""
-    click.echo("🔧 Initializing Terraform CLI config")
+@config.command("create")
+def create_profile():
+    """Prompt for config values and create a profile."""
+    click.echo("🔧 Create CLI Profile")
+    manager = ConfigManager()
 
-    config = {
+    profile_name = prompt_validation(
+        "Profile Name",
+        is_valid_profile_name,
+        "Invalid profile name.",
+    )
+
+    profile_config = {
         "project_id": prompt_validation(
-            "GCP Project ID",
-            is_valid_project_id,
-            "Project ID must be 6-30 lowercase letters, digits or hyphens, starting with a character and not ending with a hyphen.",
+            "GCP Project ID", is_valid_project_id, "Invalid project ID."
         ),
         "zone": click.prompt("GCP zone", type=str, default="europe-west1-b"),
         "instance_name": prompt_validation(
-            "VM instance name",
-            is_valid_instance_name,
-            "Instance name must be 1-63 characters, lowercase letters, digits or hyphens, start with a letter, and not end with a hyphen.",
+            "VM instance name", is_valid_instance_name, "Invalid instance name."
         ),
         "instance_user": click.prompt(
-            "Instance User. Recommend current local user ",
-            type=str,
-            default=os.environ.get("USER"),
+            "Instance User", type=str, default=os.environ.get("USER")
         ),
         "machine_type": click.prompt(
             "Machine type",
@@ -60,58 +50,121 @@ def init_config():
     }
 
     # Derive additional config
-    config["region"] = "-".join(config["zone"].split("-")[:-1])
-    config["image_base_name"] = config["instance_name"] + "-image"
+    profile_config["region"] = "-".join(profile_config["zone"].split("-")[:-1])
+    profile_config["image_base_name"] = profile_config["instance_name"] + "-image"
 
-    with DEFAULT_CONFIG_PATH.open("w") as f:
-        yaml.dump(config, f)
-
-    click.echo(f"✅ Configuration written to {DEFAULT_CONFIG_PATH}\n")
-
-    click.echo("📦 Creating 'terraform.tfvars' for all workspaces")
-    for workspace in TF_WORKSPACES:
-        write_tfvars_from_config(config, workspace)
-    click.echo("✅ 'terraform.tfvars' created in all workspaces\n")
-
-
-@init.command(name="tf")
-def init_tf():
-    """Initialise Terraform workspace"""
-    click.echo("Checking if 'terraform' is on PATH")
-    terraform_path = shutil.which("terraform")
-    if terraform_path:
-        print(f"✅ Terraform is on PATH: {terraform_path}")
-    else:
-        print(
-            "❌ Terraform is NOT on PATH.\nInstall terraform locally before proceeding."
+    overwrite = False
+    if profile_name in manager.config:
+        overwrite = click.confirm(
+            f"❗ Profile: {profile_name} already exists, overwrite?", default=False
         )
-        return False
+        if not overwrite:
+            click.echo("Aborted.")
+            return
 
-    click.echo("🔧 Initializing Terraform workspaces")
-    subprocess.run(["make", "-s", "init-all"], check=True, cwd=ROOT_DIR)
+    manager.add_profile(profile_name, profile_config, overwrite=overwrite)
 
+    all_profiles = list(manager.list_profiles().keys())
+    if len(all_profiles) > 1:
+        active = click.prompt(
+            "Select active profile",
+            type=click.Choice(all_profiles),
+            default=profile_name,
+        )
+        manager.set_active_profile(active)
 
-@init.command(name="tfvars")
-def create_tfvars_from_config():
-    config = load_config(DEFAULT_CONFIG_PATH)
-    for workspace in TF_WORKSPACES:
-        write_tfvars_from_config(config=config, workspace=workspace)
+    if not manager.get_active_profile():
+        manager.set_active_profile(profile_name)
 
-
-@init.command(name="show")
-def show_config():
-    # Make sure config exists
-    config = load_config(DEFAULT_CONFIG_PATH)
-
-    for key, val in config.items():
-        click.echo(f"{key}: {val}")
-
-
-@init.command(name="clear-state")
-def clear_tf_state():
-    for workspace in TF_WORKSPACES:
-        remove_tfstate_files(ROOT_DIR / f"infra/{workspace}")
+    click.echo(f"\n✅ Profile '{profile_name}' added.")
+    click.echo(f"✅ Active profile is now '{manager.get_active_profile()}'.")
 
 
-if __name__ == "__main__":
-    pass
+@config.command(name="profiles")
+def list_profiles():
+    manager = ConfigManager()
+    profiles = manager.list_profiles()
+
+    if not profiles:
+        click.echo(
+            f"❗ No profiles found in {manager.config_path}. Run 'vmlc config create' to create a profile."
+        )
+        return
+
+    for name, cfg in profiles.items():
+        click.echo(f"\n{name}")
+        for k, v in cfg.items():
+            click.echo(f"  {k}: {v}")
+    click.echo(f"\n Active profile: {manager.get_active_profile()}")
+
+
+@config.command(name="set")
+@click.argument("profile_name", required=False)
+def set_profile(profile_name):
+    manager = ConfigManager()
+    profiles = list(manager.list_profiles().keys())
+    current = manager.get_active_profile()
+
+    if not profiles:
+        click.echo(
+            f"❗ No profiles found in {manager.config_path}. Run 'vmlc config create' to create a profile."
+        )
+        return
+
+    if profile_name:
+        if manager.set_active_profile(profile_name):
+            click.echo(f"✅ Active profile set to: {profile_name}")
+        else:
+            click.echo(f"❌ Profile '{profile_name}' not found.")
+        return
+
+    click.echo("Available profiles:")
+    selected = select_from_list(
+        profiles=profiles,
+        prompt_message="Enter profile number to activate",
+        default=profiles.index(current) if current in profiles else None,
+    )
+
+    if selected:
+        manager.set_active_profile(selected)
+        click.echo(f"\n✅ Active profile set to: {selected}")
+    return
+
+
+@config.command(name="delete")
+@click.argument("profile_name", required=False)
+@click.option("-a", "--all", "delete_all", is_flag=True, help="Delete all profiles")
+def delete_profile(profile_name, delete_all):
+    manager = ConfigManager()
+    profiles = list(manager.list_profiles().keys())
+
+    if delete_all:
+        if not profiles:
+            click.echo("No profiles to delete.")
+            return
+        if click.confirm("🗑️ Delete all profiles?", default=False):
+            manager.delete_all_profiles()
+            click.echo("✅ All profiles deleted.")
+        else:
+            click.echo("Aborted.")
+        return
+
+    if profile_name:
+        if not manager.delete_profile(profile_name) and click.confirm(
+            f"🗑️ Delete profile: '{profile_name}'?"
+        ):
+            click.echo(f"❌ Profile '{profile_name}' not found.")
+        else:
+            click.echo(f"✅ Deleted profile '{profile_name}'")
+        return
+
+    if not profile_name:
+        selected = select_from_list(
+            profiles=profiles,
+            prompt_message="Enter the number of profile to delete",
+            confirm=True,
+            confirm_message_fn=lambda name: f"🗑️ Delete profile '{name}'?",
+        )
+        if selected:
+            manager.delete_profile(selected)
+            click.echo(f"\n✅ Deleted profile '{selected}'")
