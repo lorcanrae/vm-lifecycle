@@ -94,3 +94,4 @@ venv.bak/
 
 *.log
 **/config.yaml
+**/*.bak
