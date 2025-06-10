@@ -2,6 +2,13 @@ import click
 import re
 import subprocess
 from typing import List, Optional
+import threading
+import itertools
+import sys
+import time
+from contextlib import contextmanager
+
+from vm_lifecycle.compute_manager import GCPComputeManager
 
 
 ######## Click Config Input Validation
@@ -63,6 +70,80 @@ def select_from_list(
         except Exception:
             click.echo("❌ Invalid input.")
     return None
+
+
+######## Spinner
+
+
+@contextmanager
+def spinner(
+    text: str = "",
+    done_text: str = "✅ Operation Complete!",
+    fail_text: str = "❗ Operation Failed!",
+):
+    stop_event = threading.Event()
+    spinner_exception = []
+    text_padding = max(len(text), len(done_text))
+
+    def spinner_task():
+        spin = itertools.cycle(["-", "\\", "|", "/"])
+        start_time = time.time()
+        while not stop_event.is_set():
+            elapsed = int(time.time() - start_time)
+            output = f"{next(spin)} {text.ljust(text_padding)} ({elapsed}s)"
+            sys.stdout.write("\r" + output)
+            sys.stdout.flush()
+            time.sleep(0.1)
+        # Clear the line after stopping
+        clear_line = "\r" + " " * (text_padding + 20) + "\r"
+        sys.stdout.write(clear_line)
+        sys.stdout.flush()
+
+    thread = threading.Thread(target=spinner_task)
+    thread.start()
+
+    try:
+        yield
+    except KeyboardInterrupt as e:
+        spinner_exception.append(e)
+        stop_event.set()
+        thread.join()
+        sys.stdout.write("\r")
+        sys.stdout.flush()
+        print("\n❗ Operation cancelled.")
+        raise e
+    except Exception as e:
+        stop_event.set()
+        thread.join()
+        sys.stdout.write(f"\r{fail_text}\n")
+        raise e
+    else:
+        stop_event.set()
+        thread.join()
+        sys.stdout.write(f"\r{done_text}\n")
+    finally:
+        pass
+
+
+def poll_with_spinner(
+    compute_manager: GCPComputeManager,
+    op_name: str,
+    text: str,
+    scope: str,
+    done_text: str = "✅ Operation Complete!",
+    fail_text: str = "❗ Operation Failed!",
+):
+    try:
+        with spinner(text=text, done_text=done_text, fail_text=fail_text):
+            for update in compute_manager.wait_for_operation(op_name, scope):
+                if update == "RUNNING":
+                    continue
+                elif not update.get("success", True):
+                    raise RuntimeError("GCP Operation completed with errors")
+                else:
+                    return update
+    except Exception as e:
+        print("Error during polling", str(e))
 
 
 ######## VSCode
