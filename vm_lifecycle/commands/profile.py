@@ -12,15 +12,15 @@ from vm_lifecycle.utils import (
 from vm_lifecycle.params import GCP_MACHINE_TYPES
 
 
-@click.group(name="config")
-def config():
-    """GCP VM Lifecycle Config Commands"""
+@click.group(name="profile")
+def profile():
+    """GCP VM Lifecycle profile Commands"""
     pass
 
 
-@config.command("create")
+@profile.command("create")
 def create_profile():
-    """Prompt for config values and create a profile."""
+    """Prompt for profile values and create a profile."""
     click.echo("🔧 Create CLI Profile")
     manager = ConfigManager()
 
@@ -52,6 +52,7 @@ def create_profile():
     # Derive additional config
     profile_config["region"] = "-".join(profile_config["zone"].split("-")[:-1])
     profile_config["image_base_name"] = profile_config["instance_name"] + "-image"
+    profile_config["api_cache"] = False
 
     overwrite = False
     if profile_name in manager.config:
@@ -59,7 +60,7 @@ def create_profile():
             f"❗ Profile: {profile_name} already exists, overwrite?", default=False
         )
         if not overwrite:
-            click.echo("Aborted.")
+            click.echo("❌ Aborted.")
             return
 
     manager.add_profile(profile_name, profile_config, overwrite=overwrite)
@@ -77,10 +78,10 @@ def create_profile():
         manager.set_active_profile(profile_name)
 
     click.echo(f"\n✅ Profile '{profile_name}' added.")
-    click.echo(f"✅ Active profile is now '{manager.get_active_profile()}'.")
+    click.echo(f"✅ Active profile set to: '{manager.get_active_profile()}'")
 
 
-@config.command(name="profiles")
+@profile.command(name="show")
 def list_profiles():
     manager = ConfigManager()
     profiles = manager.list_profiles()
@@ -98,7 +99,7 @@ def list_profiles():
     click.echo(f"\n Active profile: {manager.get_active_profile()}")
 
 
-@config.command(name="set")
+@profile.command(name="set")
 @click.argument("profile_name", required=False)
 def set_profile(profile_name):
     manager = ConfigManager()
@@ -113,7 +114,7 @@ def set_profile(profile_name):
 
     if profile_name:
         if manager.set_active_profile(profile_name):
-            click.echo(f"✅ Active profile set to: {profile_name}")
+            click.echo(f"✅ Active profile set to: '{profile_name}'")
         else:
             click.echo(f"❌ Profile '{profile_name}' not found.")
         return
@@ -127,11 +128,11 @@ def set_profile(profile_name):
 
     if selected:
         manager.set_active_profile(selected)
-        click.echo(f"\n✅ Active profile set to: {selected}")
+        click.echo(f"\n✅ Active profile set to: '{selected}'")
     return
 
 
-@config.command(name="delete")
+@profile.command(name="delete")
 @click.argument("profile_name", required=False)
 @click.option("-a", "--all", "delete_all", is_flag=True, help="Delete all profiles")
 def delete_profile(profile_name, delete_all):
@@ -142,16 +143,16 @@ def delete_profile(profile_name, delete_all):
         if not profiles:
             click.echo("No profiles to delete.")
             return
-        if click.confirm("🗑️ Delete all profiles?", default=False):
+        if click.confirm("🗑️  Delete all profiles?", default=False):
             manager.delete_all_profiles()
             click.echo("✅ All profiles deleted.")
         else:
-            click.echo("Aborted.")
+            click.echo("❌ Aborted.")
         return
 
     if profile_name:
         if not manager.delete_profile(profile_name) and click.confirm(
-            f"🗑️ Delete profile: '{profile_name}'?"
+            f"🗑️  Delete profile: '{profile_name}'?"
         ):
             click.echo(f"❌ Profile '{profile_name}' not found.")
         else:
@@ -163,7 +164,7 @@ def delete_profile(profile_name, delete_all):
             profiles=profiles,
             prompt_message="Enter the number of profile to delete",
             confirm=True,
-            confirm_message_fn=lambda name: f"🗑️ Delete profile '{name}'?",
+            confirm_message_fn=lambda name: f"🗑️  Delete profile '{name}'?",
         )
         if selected:
             manager.delete_profile(selected)
