@@ -1,8 +1,8 @@
 import click
+
 from vm_lifecycle.config_manager import ConfigManager
 from vm_lifecycle.compute_manager import GCPComputeManager
-
-from pprint import pprint as print
+from vm_lifecycle.utils import poll_with_spinner
 
 
 @click.command(name="stop")
@@ -64,20 +64,22 @@ def stop_vm_instance(keep):
             instance_name=config_manager.active_profile["instance_name"]
         )
 
-        click.echo(
-            f"Stopping instance: {config_manager.active_profile["instance_name"]}"
+        spinner_text = (
+            f"Stopping instance: '{config_manager.active_profile['instance_name']}'"
         )
+        done_text = (
+            f"✅ Instance: '{config_manager.active_profile["instance_name"]}' stopped"
+        )
+
         # TODO: add spinner
-        for update in compute_manager.wait_for_operation(
-            op["name"], scope="zone", zone=config_manager.active_profile["zone"]
-        ):
-            if update == "RUNNING":
-                print("Still running...")
-            else:
-                if update["success"]:
-                    print("Operation completed successfully.")
-                else:
-                    print("Operation failed with error: ", update["error"])
+        poll_with_spinner(
+            compute_manager=compute_manager,
+            op_name=op["name"],
+            text=spinner_text,
+            done_text=done_text,
+            scope="zone",
+        )
+
     elif not instance_running and not instance_exists:
         click.echo(
             f"❗ No instance named: '{config_manager.active_profile['instance_name']}' found"
@@ -93,56 +95,56 @@ def stop_vm_instance(keep):
         instance_name=config_manager.active_profile["instance_name"],
         image_name=config_manager.active_profile["image_base_name"],
         family=config_manager.active_profile["image_base_name"],
-        zone=config_manager.active_profile["zone"],
+        zone=active_zone,
     )
 
-    click.echo("Creating Image")
-    # TODO: add spinner
-    for update in compute_manager.wait_for_operation(op["name"], scope="global"):
-        if update == "RUNNING":
-            print("Still running...")
-        else:
-            if update["success"]:
-                print("Operation completed successfully.")
-            else:
-                print("Operation failed with error: ", update["error"])
+    spinner_text = f"Creating image from instance: '{config_manager.active_profile['instance_name']}'"
+    done_text = "✅ Image created!"
+    poll_with_spinner(
+        compute_manager=compute_manager,
+        op_name=op["name"],
+        text=spinner_text,
+        done_text=done_text,
+        scope="global",
+    )
 
     # Delete dangling images
     dangling_images = compute_manager.get_dangling_images(
         family=config_manager.active_profile["image_base_name"]
     )
-    click.echo(f"🗑️  Destroying {len(dangling_images)} dangling images:")
+    click.echo(
+        f"🗑️  Destroying {len(dangling_images)} dangling image{'s' if len(dangling_images) > 1 else ''}:"
+    )
     for image in dangling_images:
         op = compute_manager.delete_image(image)
 
-        # TODO: add spinner
-        for update in compute_manager.wait_for_operation(op["name"], scope="global"):
-            if update == "RUNNING":
-                print("Still running...")
-            else:
-                if update["success"]:
-                    print("Operation completed successfully.")
-                else:
-                    print("Operation failed with error: ", update["error"])
+        spinner_text = f"Destroying image: '{image}'"
+        done_text = f"🗑️  Image: '{image}' destroyed"
+
+        poll_with_spinner(
+            compute_manager=compute_manager,
+            op_name=op["name"],
+            text=spinner_text,
+            done_text=done_text,
+            scope="global",
+        )
 
     # Delete Compute Engine Instance
     if not keep:
         op = compute_manager.delete_instance(
             instance_name=config_manager.active_profile["instance_name"],
-            zone=config_manager.active_profile["zone"],
-        )
-        click.echo(
-            f"🗑️  Destroying instance: {config_manager.active_profile['instance_name']}"
+            zone=active_zone,
         )
 
-        # TODO: add spinner
-        for update in compute_manager.wait_for_operation(
-            op["name"], scope="zone", zone=config_manager.active_profile["zone"]
-        ):
-            if update == "RUNNING":
-                print("Still running...")
-            else:
-                if update["success"]:
-                    print("Operation completed successfully.")
-                else:
-                    print("Operation failed with error: ", update["error"])
+        spinner_text = (
+            f"Destroying instance: '{config_manager.active_profile['instance_name']}'"
+        )
+        done_text = f"🗑️  Instance: '{config_manager.active_profile['instance_name']}' destroyed."
+
+        poll_with_spinner(
+            compute_manager=compute_manager,
+            op_name=op["name"],
+            text=spinner_text,
+            done_text=done_text,
+            scope="zone",
+        )
