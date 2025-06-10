@@ -23,7 +23,7 @@ def create_vm_instance(image, startup_script, zone):
         active_zone,
     )
 
-    # Check GCP APIs
+    # GCP API Check
     if not config_manager.active_profile["api_cache"]:
         apis = compute_manager.check_required_apis()
         if apis["missing"]:
