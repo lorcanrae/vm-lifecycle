@@ -139,8 +139,8 @@ class GCPComputeManager:
 
         timestamp = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
         image_body = {
-            "name": image_name,
-            "sourceDisk": f"projects/{self.project_id}/zones/{target_zone}/disks/{boot_disk}-{timestamp}",
+            "name": f"{image_name}-{timestamp}",
+            "sourceDisk": f"projects/{self.project_id}/zones/{target_zone}/disks/{boot_disk}",
         }
 
         if family:
@@ -274,7 +274,7 @@ class GCPComputeManager:
 
 
 if __name__ == "__main__":
-    zone = "europe-west1-c"
+    zone = "europe-west1-b"
     instance_name = "vmlc-test"
 
     manager = GCPComputeManager(
@@ -284,17 +284,17 @@ if __name__ == "__main__":
 
     ### Create Instance
 
-    op = manager.create_instance(
-        instance_name=instance_name,
-        machine_type="e2-standard-4",
-        disk_size=80,
-        instance_user="lscr",
-        # zone=zone,
-        use_custom_image=False,
-        custom_image_name=None,
-        image_project="ubuntu-os-cloud",
-        image_family="ubuntu-2204-lts",
-    )
+    # op = manager.create_instance(
+    #     instance_name=instance_name,
+    #     machine_type="e2-standard-4",
+    #     disk_size=80,
+    #     instance_user="lscr",
+    #     # zone=zone,
+    #     use_custom_image=False,
+    #     custom_image_name=None,
+    #     image_project="ubuntu-os-cloud",
+    #     image_family="ubuntu-2204-lts",
+    # )
 
     ### Stop Instance
 
@@ -316,7 +316,7 @@ if __name__ == "__main__":
     #     instance_name=instance_name,
     # )
 
-    result = manager.wait_for_operation(op["name"], scope="zone", zone=zone)
+    # result = manager.wait_for_operation(op["name"], scope="zone", zone=zone)
 
     ### List Instances
 
@@ -329,12 +329,21 @@ if __name__ == "__main__":
 
     ### Create Image from Instance
 
-    # op = manager.create_image_from_instance(
-    #     instance_name=instance_name,
-    #     image_name=f"{instance_name}-image",
-    #     family=f"{instance_name}-image",
-    #     zone=zone,
-    # )
+    op = manager.create_image_from_instance(
+        instance_name=instance_name,
+        image_name=f"{instance_name}-image",
+        family=f"{instance_name}-image",
+        zone=zone,
+    )
+
+    for update in manager.wait_for_operation(op["name"], scope="global", zone=zone):
+        if update == "RUNNING":
+            print("Still running...")
+        else:
+            if update["success"]:
+                print("Operation completed successfully.")
+            else:
+                print("Operation failed with error: ", update["error"])
 
     # result = manager.wait_for_operation(op["name"], scope="global", zone=zone)
 
