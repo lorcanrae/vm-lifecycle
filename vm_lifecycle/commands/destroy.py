@@ -4,11 +4,14 @@ from vm_lifecycle.compute_manager import GCPComputeManager
 
 
 @click.command(name="destroy")
-def destroy_vm():
+# @click.option("-v", "--vm", help="Destroy all VM Instances")
+# @click.option("-i", "--image", help="Destroy all VM Images")
+# @click.option("-a", "--all", help="Destroy all GCP Assets")
+def destroy_vm_instance(vm, image, all):
     # Load profile
     config_manager = ConfigManager()
 
-    # Profile check
+    # Check profile
     profile_check = config_manager.pre_run_profile_check()
     if not profile_check:
         click.echo("Error with active profile. Ensure a profile has been created.")
