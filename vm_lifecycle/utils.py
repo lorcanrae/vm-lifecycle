@@ -52,13 +52,13 @@ def select_from_list(
                         else f"Are you sure you want to select '{selection}'?"
                     )
                     if not click.confirm(confirm_msg, default=False):
-                        click.echo("Aborted.")
+                        click.echo("❌ Aborted.")
                         return None
                 return selection
             else:
                 click.echo("❌ Invalid choice.")
         except (click.exceptions.Abort, KeyboardInterrupt):
-            click.echo("\n❌ Aborted")
+            click.echo("\n❌ Aborted.")
             return
         except Exception:
             click.echo("❌ Invalid input.")
