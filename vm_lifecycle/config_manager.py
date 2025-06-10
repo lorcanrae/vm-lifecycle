@@ -4,6 +4,8 @@ from vm_lifecycle.params import DEFAULT_CONFIG_PATH
 
 
 class ConfigManager:
+    REQUIRED_APIS = ["compute.googleapis.com"]
+
     def __init__(self, config_path: Path = DEFAULT_CONFIG_PATH):
         self.config_path = config_path
         self.config = self._load_config()
@@ -50,3 +52,10 @@ class ConfigManager:
     def delete_all_profiles(self):
         self.config = {"active": None}
         self.save_config()
+
+    def validate_active_profile(self):
+        pass
+
+    # Load active config
+
+    # Pre run check? or place into GCP Manager?
