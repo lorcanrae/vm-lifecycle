@@ -1,6 +1,7 @@
 import click
 from vm_lifecycle.config_manager import ConfigManager
 from vm_lifecycle.compute_manager import GCPComputeManager
+from vm_lifecycle.utils import poll_with_spinner
 
 
 @click.command(name="create")
@@ -59,17 +60,16 @@ def create_vm_instance(image, startup_script, zone):
     )
 
     # Works
-    # TODO: Add spinner
     # TODO: Add logic if creation fails
-    # Opts: zone_out_of_resources, quota,
+    # Opts: zone_out_of_resources, quota
 
-    for status in compute_manager.wait_for_operation(
-        op["name"], scope="zone", zone=active_zone
-    ):
-        if status == "RUNNING":
-            print("Still running...")
-        elif isinstance(status, dict):
-            print("Final result: ", status)
-    # result = compute_manager.wait_for_operation(
-    #     op["name"], scope="zone", zone=active_zone
-    # )
+    spinner_text = f"Creating instance: '{config_manager.active_profile['instance_name']}' in zone: '{active_zone}'"
+    done_text = f"✅ Instance: '{config_manager.active_profile['instance_name']}' created in zone: '{active_zone}'"
+
+    poll_with_spinner(
+        compute_manager=compute_manager,
+        op_name=op["name"],
+        text=spinner_text,
+        done_text=done_text,
+        scope="zone",
+    )
