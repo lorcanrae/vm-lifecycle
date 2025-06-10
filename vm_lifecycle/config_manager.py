@@ -9,11 +9,18 @@ class ConfigManager:
     def __init__(self, config_path: Path = DEFAULT_CONFIG_PATH):
         self.config_path = config_path
         self.config = self._load_config()
+        self.active = self.config["active"] or None
+        self.active_profile = self._load_active_profile()
 
     def _load_config(self):
         if self.config_path.exists():
             with self.config_path.open("r") as f:
                 return yaml.safe_load(f) or {}
+        return {}
+
+    def _load_active_profile(self):
+        if self.config:
+            return self.config.get(self.active, {})
         return {}
 
     def save_config(self):
@@ -50,12 +57,42 @@ class ConfigManager:
         return False
 
     def delete_all_profiles(self):
-        self.config = {"active": None}
+        self.config = {}
         self.save_config()
 
-    def validate_active_profile(self):
-        pass
+    def _validate_active_profile(self):
+        # Check keys exist
+        req_keys = set(
+            [
+                "disk_size",
+                "image_base_name",
+                "instance_name",
+                "instance_user",
+                "machine_type",
+                "project_id",
+                "region",
+                "zone",
+                "api_cache",
+            ]
+        )
 
-    # Load active config
+        if set(self.active_profile.keys()) != req_keys:
+            return False
+        return True
+
+    def pre_run_profile_check(self):
+        if not self.active_profile or not self._validate_active_profile():
+            return False
+        return True
 
     # Pre run check? or place into GCP Manager?
+
+
+if __name__ == "__main__":
+    manager = ConfigManager()
+
+    from pprint import pprint as print
+
+    print(manager.active)
+    print(manager.active_profile.keys())
+    print(manager.validate_active_profile())
