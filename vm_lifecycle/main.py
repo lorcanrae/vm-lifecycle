@@ -1,6 +1,8 @@
 import click
 
-from vm_lifecycle.commands.config import config
+from vm_lifecycle.commands.profile import profile
+from vm_lifecycle.commands.create import create_vm_instance
+from vm_lifecycle.commands.destroy import destroy_vm
 
 
 @click.group()
@@ -9,11 +11,11 @@ def cli():
     pass
 
 
-cli.add_command(config)
-
+cli.add_command(profile)
+cli.add_command(create_vm_instance)
+cli.add_command(destroy_vm)
 
 # Commands to add
-# create
 # connect
 # start
 # stop
