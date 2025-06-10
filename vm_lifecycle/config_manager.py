@@ -14,7 +14,7 @@ class ConfigManager:
 
     def _load_config(self):
         if self.config_path.exists():
-            with self.config_path.open("r") as f:
+            with self.config_path.open("r", encoding="utf-8") as f:
                 return yaml.safe_load(f) or {}
         return {}
 
@@ -24,7 +24,7 @@ class ConfigManager:
         return {}
 
     def save_config(self):
-        with self.config_path.open("w") as f:
+        with self.config_path.open("w", encoding="utf-8") as f:
             yaml.dump(self.config, f)
 
     def list_profiles(self):
