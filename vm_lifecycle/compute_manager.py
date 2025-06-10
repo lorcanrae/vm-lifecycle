@@ -4,7 +4,7 @@ from googleapiclient.discovery import build
 import time
 from pathlib import Path
 
-from pprint import pprint as print
+# from pprint import pprint as print
 
 
 class GCPComputeManager:
@@ -135,7 +135,6 @@ class GCPComputeManager:
             .get(project=self.project_id, zone=target_zone, instance=instance_name)
             .execute()
         )
-        print(instance)
         boot_disk = next(
             d["source"].split("/")[-1] for d in instance["disks"] if d["boot"]
         )
@@ -259,10 +258,9 @@ class GCPComputeManager:
                 )
 
             result = request.execute()
-            # print(result.get("status"))
             status = result.get("status")
 
-            if status == "RUNNING":
+            if status == "RUNNING" or status == "STOPPING":
                 yield "RUNNING"
 
             if status == "DONE":
