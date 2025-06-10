@@ -2,6 +2,7 @@
 from google.auth import default as google_auth_default
 from googleapiclient.discovery import build
 import time
+from pathlib import Path
 
 from pprint import pprint as print
 
@@ -78,7 +79,9 @@ class GCPComputeManager:
         }
 
         if startup_script_type == "ansible":
-            with open("scripts/startup_ansible.sh") as f:
+            # Thanks Windows
+            script_path = Path("scripts") / "startup_ansible.sh"
+            with open(script_path, encoding="utf-8") as f:
                 startup_script_template = f.read()
 
             startup_script = startup_script_template.format(instance_user=instance_user)
@@ -183,6 +186,14 @@ class GCPComputeManager:
             .getFromFamily(project=self.project_id, family=family)
             .execute()
         )
+
+    def get_dangling_images(self, family: str):
+        latest_image = self.get_latest_image_from_family(family)
+        all_images = self.list_images(family)
+
+        return [
+            img["name"] for img in all_images if img["name"] != latest_image["name"]
+        ]
 
     def check_required_apis(self):
         enabled_services = []
@@ -329,35 +340,45 @@ if __name__ == "__main__":
 
     ### Create Image from Instance
 
-    op = manager.create_image_from_instance(
-        instance_name=instance_name,
-        image_name=f"{instance_name}-image",
-        family=f"{instance_name}-image",
-        zone=zone,
-    )
+    # op = manager.create_image_from_instance(
+    #     instance_name=instance_name,
+    #     image_name=f"{instance_name}-image",
+    #     family=f"{instance_name}-image",
+    #     zone=zone,
+    # )
 
-    for update in manager.wait_for_operation(op["name"], scope="global", zone=zone):
-        if update == "RUNNING":
-            print("Still running...")
-        else:
-            if update["success"]:
-                print("Operation completed successfully.")
-            else:
-                print("Operation failed with error: ", update["error"])
+    # for update in manager.wait_for_operation(op["name"], scope="global", zone=zone):
+    #     if update == "RUNNING":
+    #         print("Still running...")
+    #     else:
+    #         if update["success"]:
+    #             print("Operation completed successfully.")
+    #         else:
+    #             print("Operation failed with error: ", update["error"])
 
     # result = manager.wait_for_operation(op["name"], scope="global", zone=zone)
 
     ### List Images
 
-    # result = manager.list_images(family=f"{instance_name}-image")
+    result = manager.list_images(family=f"{instance_name}-image")
 
     # print(result)
+    print(len(result))
+    image_names = [image["name"] for image in result]
+
+    print(sorted(image_names))
 
     ### Get latest image from family
 
-    # result = manager.get_latest_image_from_family(family=f"{instance_name}-image")
+    result = manager.get_latest_image_from_family(family=f"{instance_name}-image")
 
-    # print(result)
+    print(result["name"])
+
+    ### Get dangling images
+
+    dangling_images = manager.get_dangling_images(family=f"{instance_name}-image")
+
+    print(dangling_images)
 
     ### Delete image
 
