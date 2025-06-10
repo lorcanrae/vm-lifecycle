@@ -3,7 +3,6 @@ from google.auth import default as google_auth_default
 from googleapiclient.discovery import build
 import time
 
-import json
 from pprint import pprint as print
 
 
@@ -32,14 +31,14 @@ class GCPComputeManager:
         disk_size: int = None,
         instance_user: str = None,
         zone: str = None,
-        use_custom_image: bool = False,
         custom_image_name: str = None,
         image_project: str = "ubuntu-os-cloud",
         image_family: str = "ubuntu-2204-lts",
+        startup_script_type: str = None,
     ):
         target_zone = zone or self.zone
 
-        if use_custom_image:
+        if custom_image_name:
             # Full custom image resource path (assumed to be in your project)
             source_image = (
                 f"projects/{self.project_id}/global/images/{custom_image_name}"
@@ -49,11 +48,6 @@ class GCPComputeManager:
             source_image = (
                 f"projects/{image_project}/global/images/family/{image_family}"
             )
-
-        with open("scripts/startup_ansible.sh") as f:
-            startup_script_template = f.read()
-
-        startup_script = startup_script_template.format(instance_user=instance_user)
 
         config = {
             "name": instance_name,
@@ -81,8 +75,17 @@ class GCPComputeManager:
                     ],
                 }
             ],
-            "metadata": {"items": [{"key": "startup-script", "value": startup_script}]},
         }
+
+        if startup_script_type == "ansible":
+            with open("scripts/startup_ansible.sh") as f:
+                startup_script_template = f.read()
+
+            startup_script = startup_script_template.format(instance_user=instance_user)
+
+            config["metadata"] = {
+                "items": [{"key": "startup-script", "value": startup_script}]
+            }
 
         return (
             self.compute.instances()
@@ -134,10 +137,10 @@ class GCPComputeManager:
             d["source"].split("/")[-1] for d in instance["disks"] if d["boot"]
         )
 
-        # TODO: add timestamp to image name
+        timestamp = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
         image_body = {
             "name": image_name,
-            "sourceDisk": f"projects/{self.project_id}/zones/{target_zone}/disks/{boot_disk}",
+            "sourceDisk": f"projects/{self.project_id}/zones/{target_zone}/disks/{boot_disk}-{timestamp}",
         }
 
         if family:
@@ -229,7 +232,6 @@ class GCPComputeManager:
         while True:
             if scope == "zone":
                 target_zone = zone or self.zone
-
                 request = self.compute.zoneOperations().get(
                     project=self.project_id,
                     zone=target_zone,
@@ -247,8 +249,12 @@ class GCPComputeManager:
 
             result = request.execute()
             # print(result.get("status"))
-            print(result)
-            if result.get("status") == "DONE":
+            status = result.get("status")
+
+            if status == "RUNNING":
+                yield "RUNNING"
+
+            if status == "DONE":
                 if "error" in result:
                     return {
                         "success": False,
@@ -268,7 +274,7 @@ class GCPComputeManager:
 
 
 if __name__ == "__main__":
-    zone = "europe-north1-a"
+    zone = "europe-west1-c"
     instance_name = "vmlc-test"
 
     manager = GCPComputeManager(
@@ -278,17 +284,17 @@ if __name__ == "__main__":
 
     ### Create Instance
 
-    # op = manager.create_instance(
-    #     instance_name=instance_name,
-    #     machine_type="e2-standard-4",
-    #     disk_size=80,
-    #     instance_user="lscr",
-    #     # zone=zone,
-    #     use_custom_image=False,
-    #     custom_image_name=None,
-    #     image_project="ubuntu-os-cloud",
-    #     image_family="ubuntu-2204-lts",
-    # )
+    op = manager.create_instance(
+        instance_name=instance_name,
+        machine_type="e2-standard-4",
+        disk_size=80,
+        instance_user="lscr",
+        # zone=zone,
+        use_custom_image=False,
+        custom_image_name=None,
+        image_project="ubuntu-os-cloud",
+        image_family="ubuntu-2204-lts",
+    )
 
     ### Stop Instance
 
@@ -306,9 +312,9 @@ if __name__ == "__main__":
 
     ### Delete Instance
 
-    op = manager.delete_instance(
-        instance_name=instance_name,
-    )
+    # op = manager.delete_instance(
+    #     instance_name=instance_name,
+    # )
 
     result = manager.wait_for_operation(op["name"], scope="zone", zone=zone)
 
