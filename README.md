@@ -1,39 +1,43 @@
 # GCP VM Lifecycle
 
-A CLI tool to manage the lifecycle of a Google Cloud Platform Compute Engine resource that is used as a remote *personal* instance, with a focus on cost reduction. This is not intended to manage production resources that are created in CI/CD.
+A CLI tool to manage the lifecycle of a Google Cloud Platform Compute Engine resource that is used as a remote *personal* instance, with a focus on cost minimisation by storing the VM as an [image](https://cloud.google.com/compute/docs/images) when not in use. There is built in functionality manage more than one personal VM with profiles.
 
-There are three terraform modules:
-1. **Create** - create a GCP Compute Engine instance with Ubuntu 22.04, creating a user that matches the CLI host, and install Ansible.
-2. **Archive** - turn off the Compute Engine instance, create a time-stamped GCP Image, and destroy the Compute Engine instance.
-3. **Restore** - create a GCP Compute Engine instance from the most recent timestamped image, delete any historical images.
+This tool is not intended to manage production resources that are created with CI or CD actions.
 
-The CLI wrapper written in Python, using [click](https://click.palletsprojects.com/en/stable/).
-
-This is not the most ideal application of Terraform, it would probably be easier to do everything with `gcloud` calls. I was just playing around to see how far I could get.
+The CLI wrapper is written in Python, using [click](https://click.palletsprojects.com/en/stable/), and is primarily an abstraction over the GCP Compute Engine API.
 
 # Usage
 
-Recommended to install with [pipx](https://github.com/pypa/pipx).
+Recommended to install with [pipx](https://github.com/pypa/pipx) or uv.
 
 ## Pre-requisites
 
-1. A unix-like operating system
-2. Have Python 3.12 or higher installed (might work on lower, unsure)
-3. Have `gcloud` installed and authenticated
-4. Have terraform installed
+1. Have Python 3.12 or higher installed (might work on lower, unsure)
+2. Have `gcloud` installed and authenticated with **Application Default Credentials**
+3. *Should* work on both Windows and Unix-like operating systems. Only tested on Unix-like.
 
 ## Initialisation
 
-Initialize the CLI to set GCP config and initialize the terraform workspaces with:
+Create a profile:
 
 ```bash
-vmlc init
+vmlc profile create
+```
 
-# Just GCP Config
-vmlc init config
+And follow the prompts.
 
-# Just terraform workspaces
-vmlc init tf
+Other commands:
+
+```bash
+# Show all profiles and active profile
+vmlc profile show
+
+# Set an active profile interactively or by name
+vmlc profile set [PROFILE_NAME]
+
+# Delete a profile by name or delete all profiles
+vmlc profile delete [OPTIONS] [PROFILE_NAME]
+    -a, --all       Delete all profiles
 ```
 
 ## General Usage
@@ -41,22 +45,42 @@ vmlc init tf
 Create a VM with:
 
 ```bash
-vmlc create
+vmlc create [OPTIONS]
+    -i, --image     Name of a custom VM Image to use, default: Ubuntu 22.04 LTS
+    -z, --zone      GCP Zone override, will update profile zone and region on successful operation
 ```
 
-Archive (create an image and destroy the instance) with:
+Stop a VM, create an image of the VM, prune dangling images, delete the instance:
 
 ```bash
-vmlc archive
+vmlc stop [OPTIONS]
+    -b, --basic     Stop the VM, no image is created, no instance is deleted
+    -k, --keep      Stop the VM, image is created, no instance is deleted
 ```
 
-Restore (create a VM instance from the most recent image) with:
+Start a VM from an image or stopped instance.
 
 ```bash
-vmlc restore
+vmlc start [OPTIONS]
+    -z, --zone      GCP Zone override, will update profile 'zone' and 'region' on successful operation
 ```
 
-Use VS Code to connect to an instance (requires SSH - Config VS Code extension):
+Destroy current VM:
+
+```bash
+vmlc destroy [OPTIONS]
+    -v, --vm        Destroy all VM Instances
+    -i, --image     Destroy all Images
+    -a, --all       Destroy all VM Instances and Images
+```
+
+Get the status of all VM instances for your project. A wrapper for `gcloud compute instances list --project=<your_project>`
+
+```bash
+vmlc status
+```
+
+Connect to instance:
 
 ```bash
 # Defaults to /home/<username>/code/
@@ -64,16 +88,4 @@ vmlc connect
 
 # Or connect to a specific path - requires full absolute path
 vmlc connect --path=/home/my/specific/path
-```
-
-Destroy all GCP assets (VM and images):
-
-```bash
-vmlc destroy
-
-# Maintain terraform state
-vmlc destroy --keep-state
-
-# Do a dry run
-vmlc destroy --dry-run
 ```
