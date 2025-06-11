@@ -30,7 +30,7 @@ def create_vm_instance(image, startup_script, zone):
     num_images = len(images)
 
     if images:
-        if not click.prompt(
+        if not click.confirm(
             f"❓ {num_images} image{'s' if num_images > 1 else ''} for instance: '{config_manager.active_profile['instance_name']}'. Are you sure you want to create a new instance?",
             default=False,
         ):
