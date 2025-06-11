@@ -1,39 +1,19 @@
 import click
 from googleapiclient.errors import HttpError
 
-from vm_lifecycle.config_manager import ConfigManager
-from vm_lifecycle.compute_manager import GCPComputeManager
-from vm_lifecycle.utils import poll_with_spinner
+# from vm_lifecycle.config_manager import ConfigManager
+# from vm_lifecycle.compute_manager import GCPComputeManager
+from vm_lifecycle.utils import poll_with_spinner, init_gcp_context
 
 
 @click.command(name="start")
-@click.option("-z", "--zone", help="GCP Zone override")
+@click.option(
+    "-z", "--zone", help="GCP Zone override. Updates 'zone' for current profile."
+)
 def start_vm_instance(zone):
-    # Load Profile
-    config_manager = ConfigManager()
-
-    profile_check = config_manager.pre_run_profile_check()
-    if not profile_check:
-        click.echo("❗ Error with active profile. Ensure a profile has been created.")
+    config_manager, compute_manager, active_zone = init_gcp_context(zone_override=zone)
+    if not config_manager:
         return
-
-    active_zone = zone or config_manager.active_profile["zone"]
-
-    compute_manager = GCPComputeManager(
-        config_manager.active_profile["project_id"],
-        active_zone,
-    )
-
-    # GCP API Check
-    if not config_manager.active_profile["api_cache"]:
-        apis = compute_manager.check_required_apis()
-        if apis["missing"]:
-            click.echo("❗ The following GCP API's have not been enabled:")
-            for api in apis["missing"]:
-                click.echo(f"\t{api}")
-            return
-        config_manager.config[config_manager.active]["api_cache"] = True
-        config_manager.save_config()
 
     # Check if instance exists
     existing_instances = compute_manager.list_instances()
@@ -64,14 +44,17 @@ def start_vm_instance(zone):
             click.echo(f"❗ Error: {e}")
             return
 
-    # Start instance if exists
-    if instance_exists:
+    # Start instance if exists and not different zone
+    if instance_exists and active_zone == config_manager.active_profile["zone"]:
         spinner_text = f"Instance: '{config_manager.active_profile["instance_name"]}' exists. Starting..."
-        click.echo("Instance exists: starting...")
         op = compute_manager.start_instance(
             instance_name=config_manager.active_profile["instance_name"],
             zone=config_manager.active_profile["zone"],
         )
+
+    # Create image from existing stopped instance, create new VM from image in new zone
+    elif instance_exists and active_zone != config_manager.active_profile["zone"]:
+        pass
 
     # Create instance from image
     if not instance_exists and latest_image:
@@ -87,10 +70,16 @@ def start_vm_instance(zone):
 
     done_text = f"✅ Instance: '{config_manager.active_profile['instance_name']}' created in zone: '{active_zone}'"
 
-    poll_with_spinner(
+    result = poll_with_spinner(
         compute_manager=compute_manager,
         op_name=op["name"],
         text=spinner_text,
         done_text=done_text,
         scope="zone",
+        zone=active_zone,
     )
+
+    if config_manager.update_active_zone_region(result["success"], zone=active_zone):
+        click.echo(
+            f"✅ Updated zone in profile: '{config_manager.active}' to '{active_zone}'"
+        )
