@@ -57,7 +57,7 @@ def create_profile():
     overwrite = False
     if profile_name in manager.config:
         overwrite = click.confirm(
-            f"❗ Profile: {profile_name} already exists, overwrite?", default=False
+            f"❓ Profile: {profile_name} already exists, overwrite?", default=False
         )
         if not overwrite:
             click.echo("❌ Aborted.")
@@ -143,20 +143,21 @@ def delete_profile(profile_name, delete_all):
         if not profiles:
             click.echo("No profiles to delete.")
             return
-        if click.confirm("🗑️  Delete all profiles?", default=False):
+        if click.confirm("❓  Delete all profiles?", default=False):
             manager.delete_all_profiles()
-            click.echo("✅ All profiles deleted.")
+            click.echo("🗑️  All profiles deleted.")
         else:
             click.echo("❌ Aborted.")
         return
 
+    # TODO: this looks wrong
     if profile_name:
         if not manager.delete_profile(profile_name) and click.confirm(
-            f"🗑️  Delete profile: '{profile_name}'?"
+            f"❓ Delete profile: '{profile_name}'?"
         ):
             click.echo(f"❌ Profile '{profile_name}' not found.")
         else:
-            click.echo(f"✅ Deleted profile '{profile_name}'")
+            click.echo(f"🗑️  Deleted profile '{profile_name}'")
         return
 
     if not profile_name:
@@ -164,8 +165,8 @@ def delete_profile(profile_name, delete_all):
             profiles=profiles,
             prompt_message="Enter the number of profile to delete",
             confirm=True,
-            confirm_message_fn=lambda name: f"🗑️  Delete profile '{name}'?",
+            confirm_message_fn=lambda name: f"❓ Delete profile '{name}'?",
         )
         if selected:
             manager.delete_profile(selected)
-            click.echo(f"\n✅ Deleted profile '{selected}'")
+            click.echo(f"\n🗑️  Deleted profile '{selected}'")
