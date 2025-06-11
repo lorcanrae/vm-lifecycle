@@ -40,6 +40,14 @@ class ConfigManager:
             return True
         return False
 
+    def update_active_zone_region(self, op_success: bool = False, zone: str = None):
+        if op_success and self.active_profile["zone"] != zone:
+            self.config[self.active]["zone"] = zone
+            self.config[self.active]["region"] = "-".join(zone.split("-")[:-1])
+            self.save_config()
+            return True
+        return False
+
     def add_profile(self, profile_name, profile_config, overwrite=False):
         if profile_name in self.config and not overwrite:
             return False
@@ -85,14 +93,6 @@ class ConfigManager:
             return False
         return True
 
-    # Pre run check? or place into GCP Manager?
-
 
 if __name__ == "__main__":
-    manager = ConfigManager()
-
-    from pprint import pprint as print
-
-    print(manager.active)
-    print(manager.active_profile.keys())
-    print(manager.validate_active_profile())
+    pass
