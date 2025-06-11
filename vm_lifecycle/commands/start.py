@@ -65,6 +65,24 @@ def start_vm_instance(zone):
             scope="global",
         )
 
+        # Destroy redundant instance
+        op = compute_manager.delete_instance(
+            instance_name=config_manager.active_profile["instance_name"],
+            zone=config_manager.active_profile["zone"],
+        )
+
+        spinner_text = f"Destroying VM instance: {config_manager.active_profile['instance_name']} in zone: '{config_manager.active_profile['zone']}'"
+        done_text = f"🗑️  VM instance: '{config_manager.active_profile['instance_name']}' in zone: '{active_zone}' destroyed."
+
+        poll_with_spinner(
+            compute_manager=compute_manager,
+            op_name=op["name"],
+            text=spinner_text,
+            done_text=done_text,
+            scope="zone",
+            zone=config_manager.active_profile["zone"],
+        )
+
         # Set flag to create from image
         instance_exists = False
 
