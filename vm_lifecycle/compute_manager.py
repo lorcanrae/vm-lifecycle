@@ -4,8 +4,6 @@ from googleapiclient.discovery import build
 import time
 from pathlib import Path
 
-# from pprint import pprint as print
-
 
 class GCPComputeManager:
     REQUIRED_APIS = ["compute.googleapis.com"]
@@ -259,7 +257,6 @@ class GCPComputeManager:
 
             result = request.execute()
             status = result.get("status")
-
             if status == "RUNNING" or status == "STOPPING":
                 yield "RUNNING"
 
@@ -283,103 +280,4 @@ class GCPComputeManager:
 
 
 if __name__ == "__main__":
-    zone = "europe-west1-b"
-    instance_name = "vmlc-test"
-
-    manager = GCPComputeManager(
-        project_id="wagon-de",
-        zone=zone,
-    )
-
-    ### Create Instance
-
-    # op = manager.create_instance(
-    #     instance_name=instance_name,
-    #     machine_type="e2-standard-4",
-    #     disk_size=80,
-    #     instance_user="lscr",
-    #     # zone=zone,
-    #     use_custom_image=False,
-    #     custom_image_name=None,
-    #     image_project="ubuntu-os-cloud",
-    #     image_family="ubuntu-2204-lts",
-    # )
-
-    ### Stop Instance
-
-    # op = manager.stop_instance(
-    #     instance_name=instance_name,
-    #     zone=zone,
-    # )
-
-    ### Start Instance
-
-    # op = manager.start_instance(
-    #     instance_name=instance_name,
-    #     zone=zone,
-    # )
-
-    ### Delete Instance
-
-    # op = manager.delete_instance(
-    #     instance_name=instance_name,
-    # )
-
-    # result = manager.wait_for_operation(op["name"], scope="zone", zone=zone)
-
-    ### List Instances
-
-    # result = manager.list_instances()
-
-    # with open("instance-list-output.json", "w") as f:
-    #     json.dump(result, f)
-
-    # print(result)
-
-    ### Create Image from Instance
-
-    # op = manager.create_image_from_instance(
-    #     instance_name=instance_name,
-    #     image_name=f"{instance_name}-image",
-    #     family=f"{instance_name}-image",
-    #     zone=zone,
-    # )
-
-    # for update in manager.wait_for_operation(op["name"], scope="global", zone=zone):
-    #     if update == "RUNNING":
-    #         print("Still running...")
-    #     else:
-    #         if update["success"]:
-    #             print("Operation completed successfully.")
-    #         else:
-    #             print("Operation failed with error: ", update["error"])
-
-    # result = manager.wait_for_operation(op["name"], scope="global", zone=zone)
-
-    ### List Images
-
-    result = manager.list_images(family=f"{instance_name}-image")
-
-    # print(result)
-    print(len(result))
-    image_names = [image["name"] for image in result]
-
-    print(sorted(image_names))
-
-    ### Get latest image from family
-
-    result = manager.get_latest_image_from_family(family=f"{instance_name}-image")
-
-    print(result["name"])
-
-    ### Get dangling images
-
-    dangling_images = manager.get_dangling_images(family=f"{instance_name}-image")
-
-    print(dangling_images)
-
-    ### Delete image
-
-    # op = manager.delete_image("vmlc-test-image")
-
-    # result = manager.wait_for_operation(op["name"], scope="global", zone=zone)
+    pass
