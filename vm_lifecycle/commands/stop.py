@@ -120,10 +120,8 @@ def stop_vm_instance(keep, basic):
             zone=active_zone,
         )
 
-        spinner_text = (
-            f"Destroying instance: '{config_manager.active_profile['instance_name']}'"
-        )
-        done_text = f"🗑️  Instance: '{config_manager.active_profile['instance_name']}' destroyed."
+        spinner_text = f"Destroying VM instance: {config_manager.active_profile['instance_name']} in zone: '{config_manager.active_profile['zone']}'"
+        done_text = f"🗑️  VM instance: '{config_manager.active_profile['instance_name']}' in zone: '{active_zone}' destroyed."
 
         poll_with_spinner(
             compute_manager=compute_manager,
