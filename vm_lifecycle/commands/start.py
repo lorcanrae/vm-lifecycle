@@ -11,12 +11,16 @@ from vm_lifecycle.utils import poll_with_spinner, init_gcp_context
     "-z", "--zone", help="GCP Zone override. Updates 'zone' for current profile."
 )
 def start_vm_instance(zone):
+    """Start a GCP VM instance from profile"""
     config_manager, compute_manager, active_zone = init_gcp_context(zone_override=zone)
+
     if not config_manager:
         return
 
     # Check if instance exists
-    existing_instances = compute_manager.list_instances()
+    existing_instances = compute_manager.list_instances(
+        zone=config_manager.active_profile["zone"]
+    )
     instance_exists = False
     if existing_instances:
         for instance in existing_instances:
@@ -34,6 +38,36 @@ def start_vm_instance(zone):
             ):
                 instance_exists = True
 
+    # Start instance if exists and not different zone
+    if instance_exists and active_zone == config_manager.active_profile["zone"]:
+        spinner_text = f"Instance: '{config_manager.active_profile["instance_name"]}' exists. Starting Instance."
+        op = compute_manager.start_instance(
+            instance_name=config_manager.active_profile["instance_name"],
+            zone=config_manager.active_profile["zone"],
+        )
+    # Create image from existing stopped instance, create new VM from image in new zone
+    elif instance_exists and active_zone != config_manager.active_profile["zone"]:
+        # Create image from stopped instance
+        op = compute_manager.create_image_from_instance(
+            instance_name=config_manager.active_profile["instance_name"],
+            image_name=config_manager.active_profile["image_base_name"],
+            family=config_manager.active_profile["image_base_name"],
+            zone=config_manager.active_profile["zone"],
+        )
+        spinner_text = f"Creating image from instance: '{config_manager.active_profile['instance_name']}'"
+        image_name = op["targetLink"].split("/")[-1]
+        done_text = f"✅ Image: '{image_name}' created from instance: '{config_manager.active_profile['instance_name']}'"
+        poll_with_spinner(
+            compute_manager=compute_manager,
+            op_name=op["name"],
+            text=spinner_text,
+            done_text=done_text,
+            scope="global",
+        )
+
+        # Set flag to create from image
+        instance_exists = False
+
     # Get latest image
     if not instance_exists:
         try:
@@ -43,18 +77,6 @@ def start_vm_instance(zone):
         except HttpError as e:
             click.echo(f"❗ Error: {e}")
             return
-
-    # Start instance if exists and not different zone
-    if instance_exists and active_zone == config_manager.active_profile["zone"]:
-        spinner_text = f"Instance: '{config_manager.active_profile["instance_name"]}' exists. Starting..."
-        op = compute_manager.start_instance(
-            instance_name=config_manager.active_profile["instance_name"],
-            zone=config_manager.active_profile["zone"],
-        )
-
-    # Create image from existing stopped instance, create new VM from image in new zone
-    elif instance_exists and active_zone != config_manager.active_profile["zone"]:
-        pass
 
     # Create instance from image
     if not instance_exists and latest_image:
