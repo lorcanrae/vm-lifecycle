@@ -8,7 +8,7 @@ from pathlib import Path
 class GCPComputeManager:
     REQUIRED_APIS = ["compute.googleapis.com"]
 
-    def __init__(self, project_id: str, zone: str, service_account_file: str = None):
+    def __init__(self, project_id: str, zone: str, _service_account_file: str = None):
         self.project_id = project_id
         self.zone = zone
 
@@ -159,10 +159,11 @@ class GCPComputeManager:
             .execute()
         )
 
-    def list_instances(self):
+    def list_instances(self, zone: str = None):
+        target_zone = zone or self.zone
         result = (
             self.compute.instances()
-            .list(project=self.project_id, zone=self.zone)
+            .list(project=self.project_id, zone=target_zone)
             .execute()
         )
 
