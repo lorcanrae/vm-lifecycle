@@ -14,6 +14,7 @@ from vm_lifecycle.utils import poll_with_spinner, init_gcp_context
     help="Only shut down the VM instance. No images will will be created, no instances will be destroyed",
 )
 def stop_vm_instance(keep, basic):
+    """Stop VM instance, create image of instance, delete instance"""
     config_manager, compute_manager, active_zone = init_gcp_context()
     if not config_manager:
         return
@@ -47,12 +48,8 @@ def stop_vm_instance(keep, basic):
             instance_name=config_manager.active_profile["instance_name"]
         )
 
-        spinner_text = (
-            f"Stopping instance: '{config_manager.active_profile['instance_name']}'"
-        )
-        done_text = (
-            f"✅ Instance: '{config_manager.active_profile["instance_name"]}' stopped"
-        )
+        spinner_text = f"Stopping instance: '{config_manager.active_profile['instance_name']}' in zone: '{active_zone}'"
+        done_text = f"✅ Instance: '{config_manager.active_profile["instance_name"]}' in zone: '{active_zone}' stopped"
 
         poll_with_spinner(
             compute_manager=compute_manager,

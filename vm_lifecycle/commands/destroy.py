@@ -8,6 +8,7 @@ from vm_lifecycle.utils import poll_with_spinner, init_gcp_context
 @click.option("-i", "--image", help="Destroy all VM Images")
 @click.option("-a", "--all", help="Destroy all GCP Assets")
 def destroy_vm_instance(vm, image, all):
+    """Destroy GCP VM instance"""
     config_manager, compute_manager, active_zone = init_gcp_context()
     if not config_manager:
         return

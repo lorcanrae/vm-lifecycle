@@ -8,6 +8,7 @@ from vm_lifecycle.utils import poll_with_spinner, init_gcp_context
 @click.option("-s", "--startup-script", help="Name of a custom startup script")
 @click.option("-z", "--zone", help="GCP Zone override")
 def create_vm_instance(image, startup_script, zone):
+    """Create a GCP VM instance"""
     config_manager, compute_manager, active_zone = init_gcp_context(zone_override=zone)
     if not config_manager:
         return
