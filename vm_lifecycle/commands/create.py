@@ -1,7 +1,6 @@
 import click
-from vm_lifecycle.config_manager import ConfigManager
-from vm_lifecycle.compute_manager import GCPComputeManager
-from vm_lifecycle.utils import poll_with_spinner
+
+from vm_lifecycle.utils import poll_with_spinner, init_gcp_context
 
 
 @click.command(name="create")
@@ -9,31 +8,9 @@ from vm_lifecycle.utils import poll_with_spinner
 @click.option("-s", "--startup-script", help="Name of a custom startup script")
 @click.option("-z", "--zone", help="GCP Zone override")
 def create_vm_instance(image, startup_script, zone):
-    # Load Profile
-    config_manager = ConfigManager()
-
-    profile_check = config_manager.pre_run_profile_check()
-    if not profile_check:
-        click.echo("Error with active profile. Ensure a profile has been created.")
+    config_manager, compute_manager, active_zone = init_gcp_context(zone_override=zone)
+    if not config_manager:
         return
-
-    active_zone = zone or config_manager.active_profile["zone"]
-
-    compute_manager = GCPComputeManager(
-        config_manager.active_profile["project_id"],
-        active_zone,
-    )
-
-    # GCP API Check
-    if not config_manager.active_profile["api_cache"]:
-        apis = compute_manager.check_required_apis()
-        if apis["missing"]:
-            click.echo("❗ The following GCP API's have not been enabled:")
-            for api in apis["missing"]:
-                click.echo(f"\t{api}")
-            return
-        config_manager.config[config_manager.active]["api_cache"] = True
-        config_manager.save_config()
 
     # Check existing instances with this profile already exist
     existing_instances = compute_manager.list_instances()
@@ -42,9 +19,23 @@ def create_vm_instance(image, startup_script, zone):
         for instance in existing_instances:
             if instance["name"] == config_manager.active_profile["instance_name"]:
                 click.echo(
-                    f"❗ GCP Compute Engine instance with name: '{config_manager.active_profile['instance_name']}' in zone '{config_manager.active_profile['zone']}' already exists. Start or connect to the instance"
+                    f"❗ GCP Compute Engine instance with name: '{config_manager.active_profile['instance_name']}' in zone '{active_zone}' already exists. Start or connect to the instance"
                 )
                 return
+
+    # Check if image corresponding to this profile exists
+    images = compute_manager.list_images(
+        family=config_manager.active_profile["image_base_name"]
+    )
+    num_images = len(images)
+
+    if images:
+        if not click.prompt(
+            f"❓ {num_images} image{'s' if num_images > 1 else ''} for instance: '{config_manager.active_profile['instance_name']}'. Are you sure you want to create a new instance?",
+            default=False,
+        ):
+            click.echo("❌ Aborted.")
+            return
 
     # Create instance
     op = compute_manager.create_instance(
@@ -66,10 +57,16 @@ def create_vm_instance(image, startup_script, zone):
     spinner_text = f"Creating instance: '{config_manager.active_profile['instance_name']}' in zone: '{active_zone}'"
     done_text = f"✅ Instance: '{config_manager.active_profile['instance_name']}' created in zone: '{active_zone}'"
 
-    poll_with_spinner(
+    result = poll_with_spinner(
         compute_manager=compute_manager,
         op_name=op["name"],
         text=spinner_text,
         done_text=done_text,
         scope="zone",
+        zone=active_zone,
     )
+
+    if config_manager.update_active_zone_region(result["success"], zone=active_zone):
+        click.echo(
+            f"✅ Updated zone in profile: '{config_manager.active}' to '{active_zone}'"
+        )
