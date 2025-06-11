@@ -1,6 +1,6 @@
 # GCP VM Lifecycle
 
-A CLI tool to manage the lifecycle of a Google Cloud Platform Compute Engine resource that is used as a remote *personal* instance, with a focus on cost minimisation by storing the VM as an [image](https://cloud.google.com/compute/docs/images) when not in use. There is built in functionality manage more than one personal VM with profiles.
+A CLI tool to manage the lifecycle of a Google Cloud Platform Compute Engine resource that is used as a remote *personal* instance, with a focus on cost minimisation by storing the VM as an [image](https://cloud.google.com/compute/docs/images) when not in use. Manage more than one personal VM with different profiles.
 
 This tool is not intended to manage production resources that are created with CI or CD actions.
 
@@ -80,7 +80,7 @@ Get the status of all VM instances for your project. A wrapper for `gcloud compu
 vmlc status
 ```
 
-Connect to instance:
+Connect to an instance:
 
 ```bash
 # Defaults to /home/<username>/code/
@@ -89,3 +89,7 @@ vmlc connect
 # Or connect to a specific path - requires full absolute path
 vmlc connect --path=/home/my/specific/path
 ```
+
+## Disclaimer
+
+Cloud Services costs money. I am in no way responsible for any costs attributed to users of this tool.
