@@ -1,84 +1,20 @@
-from pathlib import Path
-import yaml
 import click
 import re
 import subprocess
-from vm_lifecycle.params import DEFAULT_CONFIG_PATH
+from typing import List, Optional
+import threading
+import itertools
+import sys
+import time
+from contextlib import contextmanager
+
+from vm_lifecycle.compute_manager import GCPComputeManager
+from vm_lifecycle.config_manager import ConfigManager
 
 
-######## Config
-
-
-def load_config(path: Path = DEFAULT_CONFIG_PATH) -> dict:
-    if not path.exists():
-        click.echo(
-            f"Config file 'config.yaml' not found at: {path}. Run 'devm init config' to create config.yaml"
-        )
-        return {}
-
-    with path.open("r") as f:
-        config = yaml.safe_load(f)
-
-    return config or {}
-
-
-def write_tfvars_from_config(config: dict, workspace: str):
-    tfvars_path = Path(f"infra/{workspace}/terraform.tfvars")
-
-    with tfvars_path.open("w") as f:
-        for key, value in config.items():
-            if key == "disk_size" and workspace != "vm-create":
-                continue
-            f.write(f'{key} = "{value}"\n')
-
-
-def validate_tfvars_with_config(config: dict, workspace: str) -> bool:
-    """
-    Compare values in 'config.yaml' with 'terraform.tfvars' file in a given workspace.
-
-    Returns:
-    - True: if match
-    - False: otherwise
-    """
-
-    tfvars_path = Path(f"infra/{workspace}/terraform.tfvars")
-
-    if not tfvars_path.exists():
-        click.echo(f"❌ tfvars file not found at {tfvars_path}.")
-        click.echo(f"Run 'vmlc init tf --workspace={workspace}' or 'vmlc init tf'")
-        return False
-
-    with tfvars_path.open("r") as f:
-        tfvars_lines = [line.strip() for line in f.readlines()]
-
-    tfvars = {}
-    for line in tfvars_lines:
-        line = line.strip()
-        if "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        key = key.strip()
-        value = value.strip().strip('"')
-        tfvars[key] = value if not value.isdigit() else int(value)
-
-    mismatches = []
-    for key, value in config.items():
-        if key == "disk_size" and workspace != "vm-create":
-            continue
-        tfval = tfvars.get(key)
-        if str(tfval) != str(value):
-            mismatches.append((key, value, tfval))
-
-    if mismatches:
-        click.echo("❌ Mismatches found between config.yaml and terraform.tfvars:")
-        for key, expected, actual in mismatches:
-            click.echo(f"   - {key}: expected '{expected}', found '{actual}'")
-        return False
-
-    return True
-
-
-######## Input Validation
+######## Click Config Input Validation
+def is_valid_profile_name(profile_id: str) -> bool:
+    return re.match(r"^[a-z][a-z0-9\-]{1,20}[a-z0-9]$", profile_id) is not None
 
 
 def is_valid_project_id(pid: str) -> bool:
@@ -97,96 +33,159 @@ def prompt_validation(prompt_text, validator_fn, error_msg):
         click.echo(f"❌ {error_msg}\n")
 
 
-######## Pre-run
+######## Click Select from List
+def select_from_list(
+    profiles: List[str],
+    prompt_message: str,
+    confirm_message_fn: Optional[callable] = None,
+    confirm: bool = False,
+    default: Optional[int] = None,
+):
+    if not profiles:
+        click.echo("❌ No items available.")
+        return None
+
+    # List profiles
+    for i, p in enumerate(profiles, 1):
+        click.echo(f"{i}. {p}")
+    while True:
+        try:
+            default_display = default + 1 if default is not None else None
+            idx = click.prompt(prompt_message, type=int, default=default_display)
+            if 1 <= idx <= len(profiles):
+                selection = profiles[idx - 1]
+                if confirm:
+                    confirm_msg = (
+                        confirm_message_fn(selection)
+                        if confirm_message_fn
+                        else f"❓ Are you sure you want to select '{selection}'?"
+                    )
+                    if not click.confirm(confirm_msg, default=False):
+                        click.echo("❌ Aborted.")
+                        return None
+                return selection
+            else:
+                click.echo("❌ Invalid choice.")
+        except (click.exceptions.Abort, KeyboardInterrupt):
+            click.echo("\n❌ Aborted.")
+            return
+        except Exception:
+            click.echo("❌ Invalid input.")
+    return None
 
 
-def pre_run_checks(workspace: str) -> bool:
-    # Compare config with .tfvars
-    config = load_config(DEFAULT_CONFIG_PATH)
+######## GCP init context
+def init_gcp_context(zone_override: str = None, check_apis: bool = True):
+    config_manager = ConfigManager()
 
-    validate_tfvars_with_config(config=config, workspace=workspace)
+    if not config_manager.pre_run_profile_check():
+        click.echo("❗ Error with active profile. Ensure a profile has been created.")
+        return None, None, None
 
-    # Check if .terraform/ and .terraform.lock.hcl exists in workspace
-    workspace_dir = Path(__file__).parent.parent / "infra" / workspace
-    file_check = [".terraform", ".terraform.lock.hcl"]
-    for file in file_check:
-        if workspace_dir / file not in workspace_dir.iterdir():
-            click.echo(
-                f"{file} not found in {workspace}. Run 'devm init tf --{workspace}' or 'devm init tf'"
-            )
-            return False
-    return True
-
-
-######## Connecting
-
-
-def describe_vm(zone: str, project: str, instance_name: str) -> str:
-    """Get the description of the VM"""
-    response = str(
-        subprocess.check_output(
-            [
-                "gcloud",
-                "compute",
-                "instances",
-                "describe",
-                f"--zone={zone}",
-                f"--project={project}",
-                f"{instance_name}",
-            ]
-        )
+    active_zone = zone_override or config_manager.active_profile["zone"]
+    compute_manager = GCPComputeManager(
+        config_manager.active_profile["project_id"], active_zone
     )
-    return response
+
+    if check_apis and not config_manager.active_profile.get("api_cache", False):
+        apis = compute_manager.check_required_apis()
+        if apis["missing"]:
+            click.echo("❗ The following GCP API's have not been enabled:")
+            for api in apis["missing"]:
+                click.echo(f"\t{api}")
+            return None, None, None
+        config_manager.config[config_manager.active]["api_cache"] = True
+        config_manager.save_config()
+    return config_manager, compute_manager, active_zone
 
 
-def describe_vm_status_code(zone: str, project: str, instance_name: str):
-    response = subprocess.run(
-        [
-            "gcloud",
-            "compute",
-            "instances",
-            "describe",
-            f"--zone={zone}",
-            f"--project={project}",
-            f"{instance_name}",
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-    return response
+######## Spinner
+@contextmanager
+def spinner(
+    text: str = "",
+    done_text: str = "✅ Operation Complete!",
+    fail_text: str = "❗ Operation Failed!",
+):
+    stop_event = threading.Event()
+    spinner_exception = []
+    text_padding = max(2 + len(text), len(done_text)) + 2
+    start_time = time.time()
+
+    def spinner_task():
+        spin = itertools.cycle(["-", "\\", "|", "/"])
+        # start_time = time.time()
+        while not stop_event.is_set():
+            elapsed = int(time.time() - start_time)
+            output = f"{next(spin)} {text.ljust(text_padding)} ({elapsed}s)"
+            sys.stdout.write("\r" + output)
+            sys.stdout.flush()
+            time.sleep(0.1)
+        # Clear the line after stopping
+        clear_line = "\r" + " " * (text_padding + 20) + "\r"
+        sys.stdout.write(clear_line)
+        sys.stdout.flush()
+
+    thread = threading.Thread(target=spinner_task)
+    thread.start()
+
+    try:
+        yield
+    except KeyboardInterrupt as e:
+        spinner_exception.append(e)
+        stop_event.set()
+        thread.join()
+        sys.stdout.write("\r")
+        sys.stdout.flush()
+        print("\n❗ Operation cancelled.")
+        raise e
+    except Exception as e:
+        stop_event.set()
+        thread.join()
+        sys.stdout.write(f"\r{fail_text}\n")
+        raise e
+    else:
+        stop_event.set()
+        thread.join()
+        sys.stdout.write(f"\r{done_text} ({int(time.time() - start_time)}s)\n")
+    finally:
+        pass
 
 
-def check_running(status) -> bool:
-    return "RUNNING" in status
+def poll_with_spinner(
+    compute_manager: GCPComputeManager,
+    op_name: str,
+    text: str,
+    scope: str,
+    zone: str = None,
+    done_text: str = "✅ Operation Complete!",
+    fail_text: str = "❗ Operation Failed!",
+):
+    try:
+        with spinner(text=text, done_text=done_text, fail_text=fail_text):
+            gen = compute_manager.wait_for_operation(op_name, scope, zone=zone)
+            while True:
+                try:
+                    update = next(gen)
+                    if update == "RUNNING":
+                        continue
+                    elif isinstance(update, dict):
+                        if not update.get("success", True):
+                            raise RuntimeError("GCP Operation completed with errors")
+                        return update
+                except StopIteration as stop:
+                    update = stop.value
+                    if not update.get("succes", True):
+                        raise RuntimeError("GCP Operation completed with errors")
+                    return update
+    except Exception as e:
+        print("Error during polling: ", str(e))
+        return {"success": False, "error": str(e)}
 
 
-def instance_not_found(status) -> bool:
-    return "ERROR" in status
-
-
+######## VSCode
 def create_vscode_ssh():
     subprocess.run(["gcloud", "compute", "config-ssh"])
 
 
-######## Misc
-
-
-def remove_tfstate_files(path: Path, echo=True):
-    for file in ["terraform.tfstate", "terraform.tfstate.backup"]:
-        f = path / file
-        if f.exists():
-            f.unlink()
-            if echo:
-                click.echo(f"🗑️ Removed {f}")
-
-
 if __name__ == "__main__":
-    config = load_config(DEFAULT_CONFIG_PATH)
-    print(config)
-    validate_tfvars_with_config(config, "vm-create")
-
-    response = describe_vm_status_code(
-        config["zone"], config["project_id"], config["instance_name"]
-    )
-    print(response.stdout)
+    pass
