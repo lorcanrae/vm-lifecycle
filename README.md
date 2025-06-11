@@ -33,7 +33,7 @@ Other commands:
 vmlc profile show
 
 # Set an active profile interactively or by name
-vmlc profile set [PROFILE_NAME]
+vmlc profile set [PROFILE_NAME] is built in functionality to
 
 # Delete a profile by name or delete all profiles
 vmlc profile delete [OPTIONS] [PROFILE_NAME]
