@@ -1,27 +1,16 @@
 import click
-from vm_lifecycle.config_manager import ConfigManager
-from vm_lifecycle.compute_manager import GCPComputeManager
+
+from vm_lifecycle.utils import poll_with_spinner, init_gcp_context
 
 
 @click.command(name="destroy")
-# @click.option("-v", "--vm", help="Destroy all VM Instances")
-# @click.option("-i", "--image", help="Destroy all VM Images")
-# @click.option("-a", "--all", help="Destroy all GCP Assets")
+@click.option("-v", "--vm", help="Destroy all VM Instances")
+@click.option("-i", "--image", help="Destroy all VM Images")
+@click.option("-a", "--all", help="Destroy all GCP Assets")
 def destroy_vm_instance(vm, image, all):
-    # Load profile
-    config_manager = ConfigManager()
-
-    # Check profile
-    profile_check = config_manager.pre_run_profile_check()
-    if not profile_check:
-        click.echo("Error with active profile. Ensure a profile has been created.")
+    config_manager, compute_manager, active_zone = init_gcp_context()
+    if not config_manager:
         return
-
-    # GCP API check
-    compute_manager = GCPComputeManager(
-        config_manager.active_profile["project_id"],
-        config_manager.active_profile["zone"],
-    )
 
     # Check Instance exists
     existing_instances = compute_manager.list_instances()
@@ -34,28 +23,26 @@ def destroy_vm_instance(vm, image, all):
     for instance in existing_instances:
         if instance["name"] == config_manager.active_profile["instance_name"]:
             if click.confirm(
-                f"🗑️  Delete instance: {config_manager.active_profile['instance_name']}?",
+                f"❓ Destroy instance: '{config_manager.active_profile['instance_name']}' in zone: '{active_zone}'?",
                 default=False,
             ):
                 op = compute_manager.delete_instance(
                     instance_name=config_manager.active_profile["instance_name"],
-                    zone=config_manager.active_profile["zone"],
+                    zone=active_zone,
                 )
-                # click.echo(
-                #     f"✅ Instance: '{config_manager.active_profile['instance_name']}' in zone: '{config_manager.active_profile['instance_name']}'."
-                # )
             else:
                 click.echo("❌ Aborted.")
                 return
 
-    # TODO: add spinner
-    for update in compute_manager.wait_for_operation(
-        op["name"], scope="zone", zone=config_manager.active_profile["zone"]
-    ):
-        if update == "RUNNING":
-            print("Still running...")
-        else:
-            if update["success"]:
-                print("Operation completed successfully.")
-            else:
-                print("Operation failed with error: ", update["error"])
+    spinner_text = (
+        f"Destroying VM instance: {config_manager.active_profile['instance_name']}"
+    )
+    done_text = f"🗑️  VM instance: '{config_manager.active_profile['instance_name']}' in zone: '{active_zone}' destroyed."
+    poll_with_spinner(
+        compute_manager=compute_manager,
+        op_name=op["name"],
+        text=spinner_text,
+        done_text=done_text,
+        scope="zone",
+        zone=active_zone,
+    )
