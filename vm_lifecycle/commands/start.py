@@ -1,9 +1,8 @@
 import click
 from googleapiclient.errors import HttpError
+import sys
 
-# from vm_lifecycle.config_manager import ConfigManager
-# from vm_lifecycle.compute_manager import GCPComputeManager
-from vm_lifecycle.utils import poll_with_spinner, init_gcp_context
+from vm_lifecycle.gcp_helpers import poll_with_spinner, init_gcp_context
 
 
 @click.command(name="start")
@@ -94,7 +93,7 @@ def start_vm_instance(zone):
             )
         except HttpError as e:
             click.echo(f"❗ Error: {e}")
-            return
+            sys.exit(1)
 
     # Create instance from image
     if not instance_exists and latest_image:

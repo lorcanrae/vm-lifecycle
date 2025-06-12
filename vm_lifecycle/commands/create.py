@@ -1,6 +1,7 @@
 import click
+import sys
 
-from vm_lifecycle.utils import poll_with_spinner, init_gcp_context
+from vm_lifecycle.gcp_helpers import poll_with_spinner, init_gcp_context
 
 
 @click.command(name="create")
@@ -11,7 +12,7 @@ def create_vm_instance(image, startup_script, zone):
     """Create a GCP VM instance"""
     config_manager, compute_manager, active_zone = init_gcp_context(zone_override=zone)
     if not config_manager:
-        return
+        sys.exit(1)
 
     # Check existing instances with this profile already exist
     existing_instances = compute_manager.list_instances()
@@ -22,7 +23,7 @@ def create_vm_instance(image, startup_script, zone):
                 click.echo(
                     f"❗ GCP Compute Engine instance with name: '{config_manager.active_profile['instance_name']}' in zone '{active_zone}' already exists. Start or connect to the instance"
                 )
-                return
+                sys.exit(1)
 
     # Check if image corresponding to this profile exists
     images = compute_manager.list_images(
@@ -36,7 +37,7 @@ def create_vm_instance(image, startup_script, zone):
             default=False,
         ):
             click.echo("❌ Aborted.")
-            return
+            sys.exit(1)
 
     # Create instance
     op = compute_manager.create_instance(

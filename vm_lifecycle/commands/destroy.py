@@ -1,6 +1,7 @@
 import click
+import sys
 
-from vm_lifecycle.utils import poll_with_spinner, init_gcp_context
+from vm_lifecycle.gcp_helpers import poll_with_spinner, init_gcp_context
 
 
 @click.command(name="destroy")
@@ -11,7 +12,7 @@ def destroy_vm_instance(vm, image, all):
     """Destroy GCP VM instance"""
     config_manager, compute_manager, active_zone = init_gcp_context()
     if not config_manager:
-        return
+        sys.exit(1)
 
     # Check Instance exists
     existing_instances = compute_manager.list_instances()

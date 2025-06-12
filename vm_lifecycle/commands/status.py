@@ -1,7 +1,8 @@
 import click
 import subprocess
+import sys
 
-from vm_lifecycle.utils import init_gcp_context
+from vm_lifecycle.gcp_helpers import init_gcp_context
 
 
 @click.command(name="status")
@@ -10,7 +11,7 @@ def gcp_vm_instance_status():
 
     config_manager, compute_manager, active_zone = init_gcp_context()
     if not config_manager:
-        return
+        sys.exit(1)
 
     subprocess.run(
         [

@@ -1,8 +1,7 @@
 import click
+import sys
 
-# from vm_lifecycle.config_manager import ConfigManager
-# from vm_lifecycle.compute_manager import GCPComputeManager
-from vm_lifecycle.utils import poll_with_spinner, init_gcp_context
+from vm_lifecycle.gcp_helpers import poll_with_spinner, init_gcp_context
 
 
 @click.command(name="stop")
@@ -17,7 +16,7 @@ def stop_vm_instance(keep, basic):
     """Stop VM instance, create image of instance, delete instance"""
     config_manager, compute_manager, active_zone = init_gcp_context()
     if not config_manager:
-        return
+        sys.exit(1)
 
     # Check if instance exists
     existing_instances = compute_manager.list_instances()
@@ -64,6 +63,7 @@ def stop_vm_instance(keep, basic):
         click.echo(
             f"❗ No instance named: '{config_manager.active_profile['instance_name']}' found"
         )
+        sys.exit(1)
     elif instance_exists and not instance_running:
         pass
     elif not instance_exists and instance_running:

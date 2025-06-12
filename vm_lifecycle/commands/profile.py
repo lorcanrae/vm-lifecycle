@@ -1,5 +1,6 @@
 import click
 import os
+import sys
 from vm_lifecycle.config_manager import ConfigManager
 from vm_lifecycle.utils import (
     is_valid_profile_name,
@@ -61,7 +62,7 @@ def create_profile():
         )
         if not overwrite:
             click.echo("❌ Aborted.")
-            return
+            sys.exit(1)
 
     manager.add_profile(profile_name, profile_config, overwrite=overwrite)
 
@@ -90,7 +91,7 @@ def list_profiles():
         click.echo(
             f"❗ No profiles found in {manager.config_path}. Run 'vmlc config create' to create a profile."
         )
-        return
+        sys.exit(1)
 
     for name, cfg in profiles.items():
         click.echo(f"\n{name}")
@@ -110,14 +111,15 @@ def set_profile(profile_name):
         click.echo(
             f"❗ No profiles found in {manager.config_path}. Run 'vmlc config create' to create a profile."
         )
-        return
+        sys.exit(1)
 
     if profile_name:
         if manager.set_active_profile(profile_name):
             click.echo(f"✅ Active profile set to: '{profile_name}'")
+            return
         else:
             click.echo(f"❌ Profile '{profile_name}' not found.")
-        return
+            sys.exit(1)
 
     click.echo("Available profiles:")
     selected = select_from_list(
@@ -156,9 +158,10 @@ def delete_profile(profile_name, delete_all):
             f"❓ Delete profile: '{profile_name}'?"
         ):
             click.echo(f"❌ Profile '{profile_name}' not found.")
+            sys.exit(1)
         else:
             click.echo(f"🗑️  Deleted profile '{profile_name}'")
-        return
+            return
 
     if not profile_name:
         selected = select_from_list(
