@@ -4,6 +4,8 @@ from googleapiclient.discovery import build
 import time
 from pathlib import Path
 
+from vm_lifecycle.utils import gcphttperror
+
 
 class GCPComputeManager:
     REQUIRED_APIS = ["compute.googleapis.com"]
@@ -23,6 +25,7 @@ class GCPComputeManager:
         self.compute = build("compute", "v1", credentials=credentials)
         self.serviceusage = build("serviceusage", "v1", credentials=credentials)
 
+    ### Instance Management
     def create_instance(
         self,
         instance_name: str,
@@ -119,6 +122,28 @@ class GCPComputeManager:
             .execute()
         )
 
+    @gcphttperror()
+    def get_instance_status(self, instance_name: str, zone: str = None) -> str:
+        target_zone = zone or self.zone
+        instances = self.list_instances(zone=target_zone)
+        for instance in instances:
+            if instance["name"] == instance_name:
+                return instance.get("status", "UNKNOWN")
+        raise ValueError(
+            f"Instance: '{instance_name}' not found in zone: '{target_zone}'"
+        )
+
+    @gcphttperror()
+    def list_instances(self, zone: str = None):
+        target_zone = zone or self.zone
+        result = (
+            self.compute.instances()
+            .list(project=self.project_id, zone=target_zone)
+            .execute()
+        )
+        return result.get("items", [])
+
+    ### Image Management
     def create_image_from_instance(
         self,
         instance_name: str,
@@ -159,15 +184,12 @@ class GCPComputeManager:
             .execute()
         )
 
-    def list_instances(self, zone: str = None):
-        target_zone = zone or self.zone
-        result = (
-            self.compute.instances()
-            .list(project=self.project_id, zone=target_zone)
+    def get_latest_image_from_family(self, family: str):
+        return (
+            self.compute.images()
+            .getFromFamily(project=self.project_id, family=family)
             .execute()
         )
-
-        return result.get("items", [])
 
     def list_images(self, family: str = None):
         result = self.compute.images().list(project=self.project_id).execute()
@@ -178,13 +200,6 @@ class GCPComputeManager:
 
         return images
 
-    def get_latest_image_from_family(self, family: str):
-        return (
-            self.compute.images()
-            .getFromFamily(project=self.project_id, family=family)
-            .execute()
-        )
-
     def get_dangling_images(self, family: str):
         latest_image = self.get_latest_image_from_family(family)
         all_images = self.list_images(family)
@@ -192,6 +207,28 @@ class GCPComputeManager:
         return [
             img["name"] for img in all_images if img["name"] != latest_image["name"]
         ]
+
+    ### Misc Methods
+    def _list_regions(self):
+        request = self.compute.regions().list(project=self.project_id)
+        response = request.execute()
+        return [region["name"] for region in response.get("items", [])]
+
+    def _list_zones(self):
+        request = self.compute.zones().list(project=self.project_id)
+        zones = []
+
+        while request is not None:
+            response = request.execute()
+            for zone in response.get("items", []):
+                # zones.append(response)
+                if zone.get("status") == "UP":
+                    zones.append(zone["name"])
+            request = self.compute.zones().list_next(
+                previous_request=request, previous_response=response
+            )
+
+        return zones
 
     def check_required_apis(self):
         enabled_services = []
