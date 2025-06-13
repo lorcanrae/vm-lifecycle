@@ -6,6 +6,7 @@ from vm_lifecycle.commands.destroy import destroy_vm_instance
 from vm_lifecycle.commands.start import start_vm_instance
 from vm_lifecycle.commands.stop import stop_vm_instance
 from vm_lifecycle.commands.status import gcp_vm_instance_status
+from vm_lifecycle.commands.connect import vscode_connect
 
 
 @click.group()
@@ -20,10 +21,7 @@ cli.add_command(destroy_vm_instance)
 cli.add_command(start_vm_instance)
 cli.add_command(stop_vm_instance)
 cli.add_command(gcp_vm_instance_status)
-
-# TODO: Commands to add
-# connect
-# fix destroy
+cli.add_command(vscode_connect)
 
 
 if __name__ == "__main__":
