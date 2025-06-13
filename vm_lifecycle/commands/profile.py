@@ -123,7 +123,7 @@ def set_profile(profile_name):
 
     click.echo("Available profiles:")
     selected = select_from_list(
-        profiles=profiles,
+        list_opt=profiles,
         prompt_message="Enter profile number to activate",
         default=profiles.index(current) if current in profiles else None,
     )
