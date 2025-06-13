@@ -18,6 +18,8 @@ vmlc = 'vm_lifecycle.main:cli'
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.5"
 pytest-mock = "^3.14.0"
+ruff = "^0.11.13"
+pytest-cov = "^6.2.1"
 
 [build-system]
 requires = ["poetry-core"]
