@@ -1,4 +1,5 @@
 import yaml
+import copy
 from pathlib import Path
 from vm_lifecycle.params import DEFAULT_CONFIG_PATH
 
@@ -9,7 +10,7 @@ class ConfigManager:
     def __init__(self, config_path: Path = DEFAULT_CONFIG_PATH):
         self.config_path = config_path
         self.config = self._load_config()
-        self.active = self.config["active"] or None
+        self.active = self.config.get("active", None)
         self.active_profile = self._load_active_profile()
 
     def _load_config(self):
@@ -37,6 +38,9 @@ class ConfigManager:
         if profile_name in self.list_profiles():
             self.config["active"] = profile_name
             self.save_config()
+            self.config = self._load_config()
+            self.active = self.config.get("active", None)
+            self.active_profile = self._load_active_profile()
             return True
         return False
 
@@ -45,15 +49,20 @@ class ConfigManager:
             self.config[self.active]["zone"] = zone
             self.config[self.active]["region"] = "-".join(zone.split("-")[:-1])
             self.save_config()
+            # self.active_profile["zone"] = zone
+            # self.active_profile["region"] = "-".join(zone.split("-")[:-1])
             return True
         return False
 
     def add_profile(self, profile_name, profile_config, overwrite=False):
         if profile_name in self.config and not overwrite:
             return False
-        self.config[profile_name] = profile_config
+        profile_copy = copy.deepcopy(profile_config)
+        self.config[profile_name] = profile_copy
         if "active" not in self.config:
             self.config["active"] = profile_name
+            self.active = profile_name
+            self.active_profile = profile_copy
         self.save_config()
         return True
 
