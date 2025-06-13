@@ -62,16 +62,15 @@ Start a VM from an image or stopped instance.
 
 ```bash
 vmlc start [OPTIONS]
-    -z, --zone      GCP Zone override, will update profile 'zone' and 'region' on successful operation
+    -z, --zone      GCP Zone override, updates profile 'zone' and 'region' on successful operation
 ```
 
 Destroy current VM:
 
 ```bash
 vmlc destroy [OPTIONS]
-    -v, --vm        Destroy all VM Instances
-    -i, --image     Destroy all Images
-    -a, --all       Destroy all VM Instances and Images
+    -v, --vm        Interactively destroy VM Instances (singular, all)
+    -i, --image     Interactively destroy Images (singular, all)
 ```
 
 Get the status of all VM instances for your project. A wrapper for `gcloud compute instances list --project=<your_project>`
