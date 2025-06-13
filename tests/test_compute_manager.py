@@ -7,6 +7,13 @@ from googleapiclient.errors import HttpError
 
 @pytest.fixture
 def mock_gcp_clients(mocker):
+    # Patch google.auth.default to avoid ADC error
+    mock_credentials = mocker.Mock()
+    mocker.patch(
+        "vm_lifecycle.compute_manager.google_auth_default",
+        return_value=(mock_credentials, "test-project"),
+    )
+
     # Mock googleapiclient.discovery.build
     compute_mock = mocker.Mock()
     serviceusage_mock = mocker.Mock()
