@@ -4,7 +4,7 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG_PATH = ROOT_DIR / "config.yaml"
 
-##### Misc lists
+##### GCP Misc lists
 GCP_MACHINE_TYPES = [
     "e2-medium",
     "e2-standard-2",
