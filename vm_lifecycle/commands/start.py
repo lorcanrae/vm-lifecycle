@@ -54,15 +54,28 @@ def start_vm_instance(zone):
             zone=config_manager.active_profile["zone"],
         )
         spinner_text = f"Creating image from instance: '{config_manager.active_profile['instance_name']}'"
-        image_name = op["targetLink"].split("/")[-1]
-        done_text = f"✅ Image: '{image_name}' created from instance: '{config_manager.active_profile['instance_name']}'"
-        poll_with_spinner(
+        # image_name = op["targetLink"].split("/")[-1]
+        # done_text = f"✅ Image: '{image_name}' created from instance: '{config_manager.active_profile['instance_name']}'"
+        result = poll_with_spinner(
             compute_manager=compute_manager,
             op_name=op["name"],
             text=spinner_text,
-            done_text=done_text,
+            done_text=None,
             scope="global",
         )
+
+        if not result["success"]:
+            click.echo(f"❌ Failed to create image: {result['error']['message']}")
+            sys.exit(1)
+
+        target_link = result.get("operation", {}).get("targetLink")
+        if not target_link:
+            click.echo("❌ Image creation did not return a targetLink.")
+            sys.exit(1)
+
+        image_name = target_link.split("/")[-1]
+        done_text = f"✅ Image: '{image_name}' created from instance: '{config_manager.active_profile['instance_name']}'"
+        click.echo(done_text)
 
         # Destroy redundant instance
         op = compute_manager.delete_instance(
@@ -91,6 +104,11 @@ def start_vm_instance(zone):
             latest_image = compute_manager.get_latest_image_from_family(
                 family=config_manager.active_profile["image_base_name"]
             )
+            if not latest_image:
+                click.echo(
+                    f"❌ No image found for family: '{config_manager.active_profile['image_base_name']}'"
+                )
+                sys.exit(1)
         except HttpError as e:
             click.echo(f"❗ Error: {e}")
             sys.exit(1)
@@ -117,6 +135,10 @@ def start_vm_instance(zone):
         scope="zone",
         zone=active_zone,
     )
+
+    if not result["success"]:
+        click.echo(f"❌ Failed to start instance: {result['error']['message']}")
+        sys.exit(1)
 
     if config_manager.update_active_zone_region(result["success"], zone=active_zone):
         click.echo(
