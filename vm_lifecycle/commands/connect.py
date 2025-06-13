@@ -3,7 +3,7 @@ import subprocess
 import sys
 
 from vm_lifecycle.gcp_helpers import init_gcp_context
-from vm_lifecycle.utils import spinner, create_vm_ssh_connection
+from vm_lifecycle.utils import create_vm_ssh_connection
 
 
 @click.command(name="connect")
