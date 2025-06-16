@@ -83,7 +83,29 @@ def destroy_vm_instance(vm, images):
                     scope="zone",
                     zone=active_zone,
                 )
+        elif isinstance(selected, tuple) and len(selected) == 2:
+            instance_name, instance_zone = selected
+            op = compute_manager.delete_instance(
+                instance_name=instance_name, zone=instance_zone
+            )
 
+            spinner_text = (
+                f"Destroying VM instance: '{instance_name}' in zone: '{instance_zone}'"
+            )
+            done_text = f"🗑️  VM instance: '{instance_name}' in zone: '{instance_zone}' destroyed."
+
+            poll_with_spinner(
+                compute_manager=compute_manager,
+                op_name=op["name"],
+                text=spinner_text,
+                done_text=done_text,
+                scope="zone",
+                zone=active_zone,
+            )
+
+        else:
+            click.echo("❌ Invalid selection.")
+            sys.exit(1)
         sys.exit(0)
 
     ### Images
@@ -169,7 +191,7 @@ def destroy_vm_instance(vm, images):
                 click.echo("❌ Aborted.")
                 sys.exit(1)
 
-    spinner_text = f"Destroying VM instance: {config_manager.active_profile['instance_name']} in zone: '{config_manager.active_profile['zone']}'"
+    spinner_text = f"Destroying VM instance: '{config_manager.active_profile['instance_name']}' in zone: '{config_manager.active_profile['zone']}'"
     done_text = f"🗑️  VM instance: '{config_manager.active_profile['instance_name']}' in zone: '{active_zone}' destroyed."
 
     poll_with_spinner(
