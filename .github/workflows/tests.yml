@@ -47,6 +47,5 @@ jobs:
           pip install poetry
           poetry install
 
-      - name: Run tests and enforce coverage
-        run: poetry run pytest --cov=vm_lifecycle --cov-report=term
-        # run: poetry run pytest --cov=vm_lifecycle --cov-report=term --cov-fail-under=80
+      - name: Run tests with coverage for fun
+        run: poetry run pytest --cov=vm_lifecycle
