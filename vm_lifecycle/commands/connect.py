@@ -7,7 +7,7 @@ from vm_lifecycle.utils import create_vm_ssh_connection
 
 
 @click.command(name="connect")
-@click.option("--path", type=click.Path(), help="Path to Open VS Code on VM")
+@click.option("-p", "--path", type=click.Path(), help="Path to Open VS Code on VM")
 def vscode_connect(path):
     config_manager, compute_manager, target_zone = init_gcp_context()
     if not config_manager:
