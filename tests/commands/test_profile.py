@@ -1,5 +1,4 @@
 import pytest
-import sys
 from click.testing import CliRunner
 from pathlib import Path
 from vm_lifecycle.commands.profile import (
