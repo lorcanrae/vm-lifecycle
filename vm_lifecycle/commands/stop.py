@@ -48,9 +48,9 @@ def stop_vm_instance(keep, basic):
         )
 
         spinner_text = f"Stopping instance: '{config_manager.active_profile['instance_name']}' in zone: '{active_zone}'"
-        done_text = f"✅ Instance: '{config_manager.active_profile["instance_name"]}' in zone: '{active_zone}' stopped"
+        done_text = f"✅ Instance: '{config_manager.active_profile['instance_name']}' in zone: '{active_zone}' stopped"
 
-        poll_with_spinner(
+        result = poll_with_spinner(
             compute_manager=compute_manager,
             op_name=op["name"],
             text=spinner_text,
@@ -58,6 +58,12 @@ def stop_vm_instance(keep, basic):
             scope="zone",
             zone=active_zone,
         )
+
+        if not result or not result.get("success"):
+            click.echo(
+                f"❌ Failed to stop instance: {result.get('error', {}).get('message', 'Unknown error')}"
+            )
+            sys.exit(1)
 
     elif not instance_running and not instance_exists:
         click.echo(
@@ -81,15 +87,29 @@ def stop_vm_instance(keep, basic):
 
         spinner_text = f"Creating image from instance: '{config_manager.active_profile['instance_name']}'"
 
-        image_name = op["targetLink"].split("/")[-1]
-        done_text = f"✅ Image: '{image_name}' created from instance: '{config_manager.active_profile['instance_name']}'"
-        poll_with_spinner(
+        image_name = (
+            op["targetLink"].split("/")[-1] if "targetLink" in op else "unknown"
+        )
+        done_text = (
+            f"✅ Image: '{image_name}' created from instance: '{config_manager.active_profile['instance_name']}'"
+            if image_name != "unknown"
+            else None
+        )
+
+        result = poll_with_spinner(
             compute_manager=compute_manager,
             op_name=op["name"],
             text=spinner_text,
             done_text=done_text,
             scope="global",
         )
+
+        # If spinner fails, report the error
+        if not result or not result.get("success"):
+            click.echo(
+                f"❌ Failed to create image: {result.get('error', {}).get('message', 'Unknown error')}"
+            )
+            sys.exit(1)
 
         # Delete dangling images
         dangling_images = compute_manager.get_dangling_images(
@@ -105,13 +125,19 @@ def stop_vm_instance(keep, basic):
                 spinner_text = f"Destroying image: '{image}'"
                 done_text = f"🗑️  Image: '{image}' destroyed"
 
-                poll_with_spinner(
+                result = poll_with_spinner(
                     compute_manager=compute_manager,
                     op_name=op["name"],
                     text=spinner_text,
                     done_text=done_text,
                     scope="global",
                 )
+
+                if not result or not result.get("success"):
+                    click.echo(
+                        f"❌ Failed to delete image: {result.get('error', {}).get('message', 'Unknown error')}"
+                    )
+                    sys.exit(1)
 
     # Delete Compute Engine Instance
     if not keep and not basic:
@@ -123,7 +149,7 @@ def stop_vm_instance(keep, basic):
         spinner_text = f"Destroying VM instance: {config_manager.active_profile['instance_name']} in zone: '{config_manager.active_profile['zone']}'"
         done_text = f"🗑️  VM instance: '{config_manager.active_profile['instance_name']}' in zone: '{active_zone}' destroyed."
 
-        poll_with_spinner(
+        result = poll_with_spinner(
             compute_manager=compute_manager,
             op_name=op["name"],
             text=spinner_text,
@@ -131,3 +157,9 @@ def stop_vm_instance(keep, basic):
             scope="zone",
             zone=active_zone,
         )
+
+        if not result or not result.get("success"):
+            click.echo(
+                f"❌ Failed to delete instance: {result.get('error', {}).get('message', 'Unknown error')}"
+            )
+            sys.exit(1)
