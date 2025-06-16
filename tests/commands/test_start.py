@@ -1,5 +1,7 @@
 import pytest
+from googleapiclient.errors import HttpError
 from click.testing import CliRunner
+
 from vm_lifecycle.commands.start import start_vm_instance
 
 
@@ -195,3 +197,59 @@ def test_start_instance_with_unexpected_status(mock_context, mocker):
     result = runner.invoke(start_vm_instance)
 
     assert "Unsupported status" in result.output or result.exit_code != 0
+
+
+def test_start_exits_if_init_context_fails(mocker):
+    """Should exit silently if init_gcp_context returns None (e.g., profile is invalid)."""
+    mocker.patch(
+        "vm_lifecycle.commands.start.init_gcp_context",
+        return_value=(None, None, None),
+    )
+    runner = CliRunner()
+    result = runner.invoke(start_vm_instance)
+    assert result.exit_code == 0
+    assert result.output.strip() == ""
+
+
+def test_start_handles_no_instances_response(mock_context, mocker):
+    """Should create from image if list_instances returns empty list."""
+    config_mock, compute_mock = mock_context
+    config_mock.active_profile["zone"] = "europe-west1-a"  # simulate zone mismatch
+    compute_mock.list_instances.return_value = []
+
+    compute_mock.get_latest_image_from_family.return_value = {"name": "img-xyz"}
+    compute_mock.create_instance.return_value = {"name": "op-create"}
+
+    def fake_spinner(**kwargs):
+        print(kwargs.get("text", ""))
+        print(kwargs.get("done_text", ""))
+        return {"success": True, "operation": {"name": "op-create"}}
+
+    mocker.patch(
+        "vm_lifecycle.commands.start.poll_with_spinner",
+        side_effect=fake_spinner,
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(start_vm_instance, ["--zone", "europe-west1-b"])
+
+    assert "Creating instance from image" in result.output
+    assert result.exit_code == 0
+
+
+def test_start_handles_http_error_on_image_fetch(mock_context, mocker):
+    """Should print and exit if get_latest_image_from_family raises HttpError."""
+    from httplib2 import Response
+
+    config_mock, compute_mock = mock_context
+    compute_mock.list_instances.return_value = []
+
+    fake_response = Response({"status": 403})
+    mock_error = HttpError(resp=fake_response, content=b"Access denied")
+    compute_mock.get_latest_image_from_family.side_effect = mock_error
+
+    runner = CliRunner()
+    result = runner.invoke(start_vm_instance)
+
+    assert "❗ Error:" in result.output
+    assert result.exit_code == 1
