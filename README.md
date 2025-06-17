@@ -4,19 +4,36 @@ A CLI tool to manage the lifecycle of a Google Cloud Platform Compute Engine res
 
 This tool is not intended to manage production resources that are created with CI or CD actions.
 
-The CLI wrapper is written in Python, using [click](https://click.palletsprojects.com/en/stable/), and is primarily an abstraction over the GCP Compute Engine API.
+The CLI wrapper is written in Python, using [click](https://click.palletsprojects.com/en/stable/).
 
 # Usage
 
-Recommended to install with [pipx](https://github.com/pypa/pipx) or uv.
+Recommended to install with [pipx](https://github.com/pypa/pipx).
+
+```bash
+pipx install git+https://github.com/lorcanrae/vm-lifecycle.git
+```
+
+The tool uses profiles for each different VM you want to manage. Create a profile with `vmlc profile create` to locally store:
+- GCP Project ID
+- GCP Zone and Region
+- Instance Configuration:
+    - Instance Name
+    - Instance User Name (recommended to match local username)
+    - Disk Size
+    - Hardware config (CPU, RAM)
+
+Every command used will use the active profile.
+
+Tool uses `gcloud compute config-ssh` to generate the SSH connection to a running instance. There is no support for manually created SSH keys.
 
 ## Pre-requisites
 
-1. Have Python 3.12 or higher installed (might work on lower, unsure)
-2. Have `gcloud` installed and authenticated with **Application Default Credentials**
-3. *Should* work on both Windows and Unix-like operating systems. Only tested on Unix-like.
+1. Have Python 3.12 or higher installed.
+2. Have `gcloud` installed and authenticated with **Application Default Credentials** - typically with `gcloud auth application-default login`
+3. Unix-like operating system. It *might* work on Windows. Only tested on Unix-like.
 
-## Initialisation
+## Profile Management
 
 Create a profile:
 
@@ -33,7 +50,7 @@ Other commands:
 vmlc profile show
 
 # Set an active profile interactively or by name
-vmlc profile set [PROFILE_NAME] is built in functionality to
+vmlc profile set [PROFILE_NAME]
 
 # Delete a profile by name or delete all profiles
 vmlc profile delete [OPTIONS] [PROFILE_NAME]
@@ -46,8 +63,8 @@ Create a VM with:
 
 ```bash
 vmlc create [OPTIONS]
-    -i, --image     Name of a custom VM Image to use, default: Ubuntu 22.04 LTS
-    -z, --zone      GCP Zone override, will update profile zone and region on successful operation
+    -i, --image     Name of a custom VM Image to use (default: Ubuntu 22.04 LTS)
+    -z, --zone      GCP Zone override, updates profile zone and region on successful operation
 ```
 
 Stop a VM, create an image of the VM, prune dangling images, delete the instance:
@@ -62,10 +79,10 @@ Start a VM from an image or stopped instance.
 
 ```bash
 vmlc start [OPTIONS]
-    -z, --zone      GCP Zone override, updates profile 'zone' and 'region' on successful operation
+    -z, --zone      GCP Zone override, updates profile zone and region on successful operation
 ```
 
-Destroy current VM:
+Destroy VM based on active profile:
 
 ```bash
 vmlc destroy [OPTIONS]
@@ -73,22 +90,21 @@ vmlc destroy [OPTIONS]
     -i, --image     Interactively destroy Images (singular, all)
 ```
 
-Get the status of all VM instances for your project. A wrapper for `gcloud compute instances list --project=<your_project>`
+Get the status of all VM instances for a GCP project. A wrapper for `gcloud compute instances list --project=<your_project>`
 
 ```bash
-vmlc status
+vmlc status [OPTIONS]
+    -i, --images    List all images for the project
 ```
 
-Connect to an instance:
+If you use VSCode, connect to an instance:
 
 ```bash
-# Defaults to /home/<username>/code/
-vmlc connect
-
-# Or connect to a specific path - requires full absolute path
-vmlc connect --path=/home/my/specific/path
+# Defaults to /home/<instance_user>/
+vmlc connect [OPTIONS]
+    -p, --path      Target connection path (requires absolute path)
 ```
 
 ## Disclaimer
 
-Cloud Services costs money. I am in no way responsible for any costs attributed to users of this tool.
+Cloud Services costs money. I am in no way responsible for any costs attributed to users of this software.
