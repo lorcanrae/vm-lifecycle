@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "vm-lifecycle"
-version = "0.3.1"
+version = "0.3.2"
 description = ""
 authors = ["Lorcan Rae <lorcanrae@gmail.com>"]
 readme = "README.md"
@@ -14,7 +14,7 @@ google-api-python-client = "^2.170.0"
 google-auth = "^2.40.2"
 
 [tool.poetry.scripts]
-vmlc = 'src.vm_lifecycle.main:cli'
+vmlc = 'vm_lifecycle.main:cli'
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.5"
