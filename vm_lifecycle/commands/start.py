@@ -28,7 +28,7 @@ def start_vm_instance(zone):
                 and instance["status"] == "RUNNING"
             ):
                 click.echo(
-                    f"❗ Instance: '{config_manager.active_profile["instance_name"]}' is already running."
+                    f"❗ Instance: '{config_manager.active_profile['instance_name']}' is already running."
                 )
                 return
             elif (
@@ -39,7 +39,7 @@ def start_vm_instance(zone):
 
     # Start instance if exists and not different zone
     if instance_exists and active_zone == config_manager.active_profile["zone"]:
-        spinner_text = f"Instance: '{config_manager.active_profile["instance_name"]}' exists. Starting Instance."
+        spinner_text = f"Instance: '{config_manager.active_profile['instance_name']}' exists. Starting Instance."
         op = compute_manager.start_instance(
             instance_name=config_manager.active_profile["instance_name"],
             zone=config_manager.active_profile["zone"],
@@ -84,7 +84,7 @@ def start_vm_instance(zone):
         )
 
         spinner_text = f"Destroying VM instance: {config_manager.active_profile['instance_name']} in zone: '{config_manager.active_profile['zone']}'"
-        done_text = f"🗑️  VM instance: '{config_manager.active_profile['instance_name']}' in zone: '{active_zone}' destroyed."
+        done_text = f"🗑️ VM instance: '{config_manager.active_profile['instance_name']}' in zone: '{active_zone}' destroyed."
 
         poll_with_spinner(
             compute_manager=compute_manager,

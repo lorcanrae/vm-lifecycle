@@ -73,7 +73,7 @@ def destroy_vm_instance(vm, images):
                 )
 
                 spinner_text = f"Destroying VM instance: {instance_name} in zone: '{instance_zone}'"
-                done_text = f"🗑️  VM instance: '{instance_name}' in zone: '{instance_zone}' destroyed."
+                done_text = f"🗑️ VM instance: '{instance_name}' in zone: '{instance_zone}' destroyed."
 
                 poll_with_spinner(
                     compute_manager=compute_manager,
@@ -92,7 +92,7 @@ def destroy_vm_instance(vm, images):
             spinner_text = (
                 f"Destroying VM instance: '{instance_name}' in zone: '{instance_zone}'"
             )
-            done_text = f"🗑️  VM instance: '{instance_name}' in zone: '{instance_zone}' destroyed."
+            done_text = f"🗑️ VM instance: '{instance_name}' in zone: '{instance_zone}' destroyed."
 
             poll_with_spinner(
                 compute_manager=compute_manager,
@@ -143,7 +143,7 @@ def destroy_vm_instance(vm, images):
                 op = compute_manager.delete_image(image)
 
                 spinner_text = f"Destroying image: '{image}'"
-                done_text = f"🗑️  Image: '{image}' destroyed"
+                done_text = f"🗑️ Image: '{image}' destroyed"
 
                 poll_with_spinner(
                     compute_manager=compute_manager,
@@ -156,7 +156,7 @@ def destroy_vm_instance(vm, images):
             op = compute_manager.delete_image(selected)
 
             spinner_text = f"Destroying image: '{selected}'"
-            done_text = f"🗑️  Image: '{selected}' destroyed"
+            done_text = f"🗑️ Image: '{selected}' destroyed"
 
             poll_with_spinner(
                 compute_manager=compute_manager,
@@ -192,7 +192,7 @@ def destroy_vm_instance(vm, images):
                 sys.exit(1)
 
     spinner_text = f"Destroying VM instance: '{config_manager.active_profile['instance_name']}' in zone: '{config_manager.active_profile['zone']}'"
-    done_text = f"🗑️  VM instance: '{config_manager.active_profile['instance_name']}' in zone: '{active_zone}' destroyed."
+    done_text = f"🗑️ VM instance: '{config_manager.active_profile['instance_name']}' in zone: '{active_zone}' destroyed."
 
     poll_with_spinner(
         compute_manager=compute_manager,

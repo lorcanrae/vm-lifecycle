@@ -147,7 +147,7 @@ def delete_profile(profile_name, delete_all):
             sys.exit(0)
         if click.confirm("❓  Delete all profiles?", default=False):
             manager.delete_all_profiles()
-            click.echo("🗑️  All profiles deleted.")
+            click.echo("🗑️ All profiles deleted.")
         else:
             click.echo("❌ Aborted.")
         return
@@ -160,7 +160,7 @@ def delete_profile(profile_name, delete_all):
             click.echo(f"❌ Profile '{profile_name}' not found.")
             sys.exit(1)
         else:
-            click.echo(f"🗑️  Deleted profile '{profile_name}'")
+            click.echo(f"🗑️ Deleted profile '{profile_name}'")
             sys.exit(0)
 
     if not profile_name:
@@ -172,4 +172,4 @@ def delete_profile(profile_name, delete_all):
         )
         if selected:
             manager.delete_profile(selected)
-            click.echo(f"\n🗑️  Deleted profile '{selected}'")
+            click.echo(f"\n🗑️ Deleted profile '{selected}'")

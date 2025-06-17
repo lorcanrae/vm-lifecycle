@@ -117,13 +117,13 @@ def stop_vm_instance(keep, basic):
         )
         if dangling_images:
             click.echo(
-                f"🗑️  Destroying {len(dangling_images)} dangling image{'s' if len(dangling_images) > 1 else ''}:"
+                f"🗑️ Destroying {len(dangling_images)} dangling image{'s' if len(dangling_images) > 1 else ''}:"
             )
             for image in dangling_images:
                 op = compute_manager.delete_image(image)
 
                 spinner_text = f"Destroying image: '{image}'"
-                done_text = f"🗑️  Image: '{image}' destroyed"
+                done_text = f"🗑️ Image: '{image}' destroyed"
 
                 result = poll_with_spinner(
                     compute_manager=compute_manager,
@@ -147,7 +147,7 @@ def stop_vm_instance(keep, basic):
         )
 
         spinner_text = f"Destroying VM instance: {config_manager.active_profile['instance_name']} in zone: '{config_manager.active_profile['zone']}'"
-        done_text = f"🗑️  VM instance: '{config_manager.active_profile['instance_name']}' in zone: '{active_zone}' destroyed."
+        done_text = f"🗑️ VM instance: '{config_manager.active_profile['instance_name']}' in zone: '{active_zone}' destroyed."
 
         result = poll_with_spinner(
             compute_manager=compute_manager,

@@ -140,7 +140,7 @@ def test_delete_profile_by_argument(runner, mocker, mock_config_manager):
     result = runner.invoke(delete_profile, ["test"])
 
     assert result.exit_code == 0
-    assert "🗑️  Deleted profile 'test'" in result.output
+    assert "🗑️ Deleted profile 'test'" in result.output
 
 
 def test_delete_all_profiles_confirmed(runner, mocker):
@@ -156,4 +156,4 @@ def test_delete_all_profiles_confirmed(runner, mocker):
     result = runner.invoke(delete_profile, ["--all"])
 
     assert result.exit_code == 0
-    assert "🗑️  All profiles deleted." in result.output
+    assert "🗑️ All profiles deleted." in result.output
