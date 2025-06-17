@@ -6,7 +6,13 @@ This tool is not intended to manage production resources that are created with C
 
 The CLI wrapper is written in Python, using [click](https://click.palletsprojects.com/en/stable/).
 
-# Usage
+# Requirements
+
+1. Have Python 3.12 or higher installed.
+2. Have `gcloud` installed and authenticated with **Application Default Credentials** - typically with `gcloud auth application-default login`
+3. Unix-like operating system. It *might* work on Windows. Only tested on Unix-like.
+
+# Installation
 
 Recommended to install with [pipx](https://github.com/pypa/pipx).
 
@@ -23,15 +29,11 @@ The tool uses profiles for each different VM you want to manage. Create a profil
     - Disk Size
     - Hardware config (CPU, RAM)
 
-Every command used will use the active profile.
+No secrets are stored in plain text. Every command used will use the active profile.
 
 Tool uses `gcloud compute config-ssh` to generate the SSH connection to a running instance. There is no support for manually created SSH keys.
 
-## Pre-requisites
-
-1. Have Python 3.12 or higher installed.
-2. Have `gcloud` installed and authenticated with **Application Default Credentials** - typically with `gcloud auth application-default login`
-3. Unix-like operating system. It *might* work on Windows. Only tested on Unix-like.
+# Usage
 
 ## Profile Management
 
@@ -67,6 +69,13 @@ vmlc create [OPTIONS]
     -z, --zone      GCP Zone override, updates profile zone and region on successful operation
 ```
 
+Start a VM from a stopped instance or image related to the current profile.
+
+```bash
+vmlc start [OPTIONS]
+    -z, --zone      GCP Zone override, updates profile zone and region on successful operation
+```
+
 Stop a VM, create an image of the VM, prune dangling images, delete the instance:
 
 ```bash
@@ -75,20 +84,27 @@ vmlc stop [OPTIONS]
     -k, --keep      Stop the VM, image is created, no instance is deleted
 ```
 
-Start a VM from an image or stopped instance.
+If you use VS Code, connect to an instance:
 
 ```bash
-vmlc start [OPTIONS]
-    -z, --zone      GCP Zone override, updates profile zone and region on successful operation
+# Defaults to /home/<instance_user>/
+vmlc connect [OPTIONS]
+    -p, --path      Target connection path (requires absolute path)
 ```
 
-Destroy VM based on active profile:
+The general flow is:
+➡️ Create a **profile**
+➡️ **create** an instance, set it up to your preference
+➡️ Use **start** and **stop** as required
+➡️ Use **connect** to connect to an instance.
+
+If a GCP Zone has exhausted compute resources, start an instance from a stopped instance or image in a different zone with:
 
 ```bash
-vmlc destroy [OPTIONS]
-    -v, --vm        Interactively destroy VM Instances (singular, all)
-    -i, --image     Interactively destroy Images (singular, all)
+vmlc start -z <different_gcp_zone>
 ```
+
+## Extended Usage
 
 Get the status of all VM instances for a GCP project. A wrapper for `gcloud compute instances list --project=<your_project>`
 
@@ -97,12 +113,12 @@ vmlc status [OPTIONS]
     -i, --images    List all images for the project
 ```
 
-If you use VSCode, connect to an instance:
+Destroy VM based on active profile:
 
 ```bash
-# Defaults to /home/<instance_user>/
-vmlc connect [OPTIONS]
-    -p, --path      Target connection path (requires absolute path)
+vmlc destroy [OPTIONS]
+    -v, --vm        Interactively destroy VM Instances (singular, all)
+    -i, --images    Interactively destroy Images (singular, all)
 ```
 
 ## Disclaimer
