@@ -6,13 +6,13 @@ This tool is not intended to manage production resources that are created with C
 
 The CLI wrapper is written in Python, using [click](https://click.palletsprojects.com/en/stable/).
 
-# Requirements
+## Requirements
 
 1. Have Python 3.12 or higher installed.
 2. Have `gcloud` installed and authenticated with **Application Default Credentials** - typically with `gcloud auth application-default login`
 3. Unix-like operating system. It *might* work on Windows. Only tested on Unix-like.
 
-# Installation
+## Installation
 
 Recommended to install with [pipx](https://github.com/pypa/pipx).
 
@@ -33,9 +33,9 @@ No secrets are stored in plain text. Every command used will use the active prof
 
 Tool uses `gcloud compute config-ssh` to generate the SSH connection to a running instance. There is no support for manually created SSH keys.
 
-# Usage
+## Usage
 
-## Profile Management
+### Profile Management
 
 Create a profile:
 
@@ -59,7 +59,7 @@ vmlc profile delete [OPTIONS] [PROFILE_NAME]
     -a, --all       Delete all profiles
 ```
 
-## General Usage
+### General Usage
 
 Create a VM with:
 
@@ -92,11 +92,13 @@ vmlc connect [OPTIONS]
     -p, --path      Target connection path (requires absolute path)
 ```
 
-The general flow is:
-➡️ Create a **profile**
-➡️ **create** an instance, set it up to your preference
-➡️ Use **start** and **stop** as required
-➡️ Use **connect** to connect to an instance.
+General usage flow may look like:
+1. Create a **profile**
+2. **Create** an instance, configure it to your preference
+3. **Connect** to the instance
+4. **Stop** the instance
+5. **Start** the instance
+6. Repeat steps 3 - 5
 
 If a GCP Zone has exhausted compute resources, start an instance from a stopped instance or image in a different zone with:
 
@@ -104,7 +106,7 @@ If a GCP Zone has exhausted compute resources, start an instance from a stopped 
 vmlc start -z <different_gcp_zone>
 ```
 
-## Extended Usage
+### Extended Usage
 
 Get the status of all VM instances for a GCP project. A wrapper for `gcloud compute instances list --project=<your_project>`
 
