@@ -22,8 +22,8 @@ def profile():
 @profile.command("create")
 def create_profile():
     """Prompt for profile values and create a profile."""
-    click.echo("🔧 Create CLI Profile")
     manager = ConfigManager()
+    click.echo("🔧 Create CLI Profile")
 
     profile_name = prompt_validation(
         "Profile Name",
@@ -65,6 +65,7 @@ def create_profile():
             sys.exit(1)
 
     manager.add_profile(profile_name, profile_config, overwrite=overwrite)
+    click.echo(f"📁 Saving profile to: {manager.config_path}")
 
     all_profiles = list(manager.list_profiles().keys())
     if len(all_profiles) > 1:

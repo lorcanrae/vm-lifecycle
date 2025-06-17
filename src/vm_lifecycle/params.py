@@ -1,8 +1,11 @@
 from pathlib import Path
+from platformdirs import user_config_dir
 
 ##### Paths
-ROOT_DIR = Path(__file__).resolve().parent.parent.parent
-DEFAULT_CONFIG_PATH = ROOT_DIR / "config.yaml"
+APP_NAME = "vmlc"
+CONFIG_DIR = Path(user_config_dir(APP_NAME))
+CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+DEFAULT_CONFIG_PATH = CONFIG_DIR / "config.yaml"
 
 ##### GCP Misc lists
 GCP_MACHINE_TYPES = [
@@ -15,6 +18,5 @@ GCP_MACHINE_TYPES = [
     "n2-standard-4",
 ]
 
-
 if __name__ == "__main__":
-    print(ROOT_DIR)
+    print(DEFAULT_CONFIG_PATH)
