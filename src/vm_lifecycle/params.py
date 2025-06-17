@@ -1,7 +1,7 @@
 from pathlib import Path
 
 ##### Paths
-ROOT_DIR = Path(__file__).resolve().parent.parent
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 DEFAULT_CONFIG_PATH = ROOT_DIR / "config.yaml"
 
 ##### GCP Misc lists
