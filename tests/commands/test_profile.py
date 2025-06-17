@@ -39,7 +39,7 @@ def test_create_profile_adds_new_profile(runner, mocker, mock_config_manager):
     result = runner.invoke(create_profile)
 
     assert result.exit_code == 0
-    assert "✅ Profile 'test-profile' added." in result.output
+    assert "Saving profile 'test-profile'" in result.output
 
 
 def test_create_profile_overwrite_decline(runner, mocker):

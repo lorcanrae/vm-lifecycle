@@ -78,7 +78,7 @@ def create_profile():
     if not manager.get_active_profile():
         manager.set_active_profile(profile_name)
 
-    click.echo(f"\n📁 Profile '{profile_name}' added at {manager.config_path}")
+    click.echo(f"\n📁 Saving profile '{profile_name}' to: {manager.config_path}")
     click.echo(f"✅ Active profile set to: '{manager.get_active_profile()}'")
 
 
