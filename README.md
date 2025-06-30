@@ -91,6 +91,8 @@ If you use VS Code, connect to an instance:
 vmlc connect [OPTIONS]
     -p, --path      Target connection path (requires absolute path)
 ```
+❗ Note: Instances created from images will need to be SSH fingerprinted.
+
 
 General usage flow may look like:
 1. Create a **profile**
