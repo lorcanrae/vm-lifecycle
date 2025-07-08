@@ -1,4 +1,4 @@
-# GCP VM Lifecycle
+# VM Lifecycle
 
 A CLI tool to manage the lifecycle of a Google Cloud Platform Compute Engine resource that is used as a remote *personal* instance, with a focus on cost minimisation by storing the VM as an [image](https://cloud.google.com/compute/docs/images) when not in use. Manage more than one personal VM with different profiles.
 
