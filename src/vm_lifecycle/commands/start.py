@@ -137,6 +137,8 @@ def start_vm_instance(zone):
     )
 
     if not result["success"]:
+        from pprint import pprint
+        pprint(result)
         click.echo(f"❌ Failed to start instance: {result['error']['message']}")
         sys.exit(1)
 
