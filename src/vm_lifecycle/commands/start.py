@@ -137,18 +137,21 @@ def start_vm_instance(zone):
     )
 
     if not result["success"]:
-        errors = result["error"]["errors"]
+        errors = result["error"].get("errors", None)
         if errors:
             for val in errors:
                 if "message" in val.keys():
-                    error_msg = val["message"]
+                    error_msg = "\n" + val["message"]
                     if "does not have enough resources available" in error_msg:
-                        error_msg += "\n" + "Use 'vmlc start [-z, --zone] <some_different_zone>' to create a VM instance in a different zone"
-
+                        error_msg += (
+                            "\n"
+                            + "Use 'vmlc start [-z, --zone] <some_different_zone>' to create a VM instance in a different zone"
+                        )
+        else:
+            error_msg = result["error"]["message"]
 
         # click.echo(f"❌ Failed to start instance: {result['error']['message']}")
-        click.echo("❌ Failed to start instance:")
-        click.echo(error_msg)
+        click.echo(f"❌ Failed to start instance: {error_msg}")
         sys.exit(1)
 
     if config_manager.update_active_zone_region(result["success"], zone=active_zone):
